@@ -1,0 +1,5 @@
+###############################################################################
+# Collector for open file descriptors
+###############################################################################
+
+This collector reads the number of open file descriptors

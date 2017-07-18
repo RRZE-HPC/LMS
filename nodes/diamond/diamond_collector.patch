@@ -1,0 +1,10 @@
+373,374c373,374
+<     def publish(self, name, value, raw_value=None, precision=0,
+<                 metric_type='GAUGE', instance=None):
+---
+>     def publish(self, name, value, raw_value=None, timestamp=None, 
+>                 precision=0, metric_type='GAUGE', instance=None):
+395c395
+<             metric = Metric(path, value, raw_value=raw_value, timestamp=None,
+---
+>             metric = Metric(path, value, raw_value=raw_value, timestamp=timestamp,

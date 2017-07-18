@@ -1,0 +1,5 @@
+###############################################################################
+# Collector for values from the InfiniBand adapters
+###############################################################################
+
+This collector reads information from the InfiniBand adapters

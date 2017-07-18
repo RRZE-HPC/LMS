@@ -1,0 +1,15 @@
+###############################################################################
+# Collector for statistics from the Lustre file system
+###############################################################################
+
+This collector reads some data from the Lustre file system
+
+read_bytes
+write_bytes
+read_requests
+write_requests
+open
+close
+setattr
+statfs
+inode_permission

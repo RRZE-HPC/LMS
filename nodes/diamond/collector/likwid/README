@@ -1,0 +1,13 @@
+###############################################################################
+# Collector for hardware counters using LIKWID
+###############################################################################
+
+This collector measures hardware counters using LIKWID
+
+Dependencies:
+- likwid (https://github.com/RRZE-HPC/likwid)
+- pylikwid (https://github.com/RRZE-HPC/pylikwid)
+
+The measured metrics depend on the groups that this collector should measure.
+
+

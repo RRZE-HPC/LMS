@@ -1,0 +1,24 @@
+###############################################################################
+#    Diamond
+###############################################################################
+
+In order to use Diamond on the nodes, you can use the newest version from the
+web:
+https://github.com/python-diamond/Diamond
+They provide files to create RPMs or Debian packages in their repository
+
+One thing that Diamond is currently missing is the sending of timestamps. This
+is commonly no problem as at reception of the metrics by the database, a
+timestamp is automatically added. Since the InfluxDBRouter might delay the
+reception of the metric, it is better to add the timestamp already at the
+nodes.
+The patch 'diamond_collector.patch' can be used to add this functionality
+to Diamond
+
+Diamond provides an output handler for InfluxDB using the python influxdb
+package. If there are problems with that handler, you can also use
+'influxdbHandlerNative' which uses the urllib2 to send the metrics. It
+does not require the installation of any python package, it just uses
+stuff from the standard library
+
+
