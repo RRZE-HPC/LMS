@@ -29,9 +29,9 @@ from threading import Lock
 from ConfigParser import SafeConfigParser
 
 # Class which represents a measurement
-from InfluxDBMeasurement import Measurement
+from influxdbmeasurement import Measurement
 # Class which holds the tags
-from TagStore import Tagger
+from tagstore import Tagger
 # Publish data through an ZMQ publisher
 from zmqPublisher import ZMQPublisher
 
@@ -44,7 +44,7 @@ def handle_signal(sig):
         if daemon.receiver:
             while daemon.receiver.store.send_required():
                 daemon.receiver.store.send_all()
-    
+
 
 
 def is_number(s):
@@ -53,13 +53,13 @@ def is_number(s):
         return True
     except ValueError:
         pass
- 
+
     try:
         unicodedata.numeric(s)
         return True
     except (TypeError, ValueError):
         pass
- 
+
     return False
 
 def get_influx_values(data):
@@ -102,7 +102,7 @@ class MeasurementStore(object):
         self.addtimes = {}
         self.active_keys = []
         self.lock = Lock()
-        
+
 
         self.timeout = 600
         if self.config.has_section("CacheConfig"):
@@ -111,7 +111,7 @@ class MeasurementStore(object):
 
         self.oldest = None
         self.batch_ready = Queue()
-        
+
         self.send_in_progress = False
         self.heads = {"Content-Type" : "application/octet-stream"}
         self.dbs = {}
@@ -382,7 +382,7 @@ class InfluxReceiver(ThreadingMixIn, HTTPServer, object):
                            "split_db_format" : "[tags.username]",
                            "splitkey" : "tags.jobid",
                            "dbentries" : ""}
-        
+
         self.defSplitDBconf = { "hostname" : None,
                                 "port" : None,
                                 "batch" : 100,
@@ -397,7 +397,7 @@ class InfluxReceiver(ThreadingMixIn, HTTPServer, object):
         self.zmqPublisher = None
         super(InfluxReceiver, self).__init__(server_address, RequestHandlerClass)
 
-        
+
 
     def setup_signal_config(self):
         if self.config.has_section("SignalConfig"):
@@ -418,7 +418,7 @@ class InfluxReceiver(ThreadingMixIn, HTTPServer, object):
                     self.metricconf[k] = self.config.get("MetricsConfig", k).strip()
         self.metricconf["allow_tag_modification"] = bool(self.metricconf["allow_tag_modification"])
     def setup_split_config(self):
-        
+
         if self.config.has_section("SplitConfig"):
             for k in self.splitconf:
                 if self.config.has_option("SplitConfig", k):
@@ -458,7 +458,7 @@ class InfluxReceiver(ThreadingMixIn, HTTPServer, object):
 class InfluxReceiveHandler(BaseHTTPRequestHandler):
     def __init__(self, request, client_address, server):
         self.timeout = 1
-        
+
         BaseHTTPRequestHandler.__init__(self, request, client_address, server)
     def _set_headers(self, resp):
         self.send_response(resp)
@@ -467,7 +467,7 @@ class InfluxReceiveHandler(BaseHTTPRequestHandler):
         self.end_headers()
     def log_message(self,fmt, *args):
         pass
-        
+
     def do_POST(self):
         u = urlparse(self.path)
         content = self.rfile.read(int(self.headers["Content-Length"]))
@@ -558,7 +558,7 @@ class InfluxReceiveHandler(BaseHTTPRequestHandler):
                     # Get the format of the new database
                     udb = self.server.splitconf["split_db_format"]
                     skip = False
-                    
+
                     # Try to replace variables in format with measurements entries
                     if "tags." in udb:
                         tags = newm.get_all_tags()
@@ -651,7 +651,7 @@ class InfluxReceiveHandler(BaseHTTPRequestHandler):
                         out = json.dumps(self.server.tagger.get_all_key_data())
                     if m.group(1) == "dbhosts":
                         out = json.dumps(self.server.store.get_db_hosts())
-                        
+
                     if out:
                         self.send_response(200)
                         self.send_header('Content-type', 'application/json')
@@ -694,7 +694,7 @@ class InfluxReceiveHandler(BaseHTTPRequestHandler):
             method = getattr(self, mname)
             method()
             self.wfile.flush() #actually send the response if not already done.
-            
+
             # now check the store whether a send is required.
             if self.server.store.send_required():
                 self.server.store.send_all()
@@ -758,7 +758,7 @@ def main():
 
     FORMAT = '%(asctime)s %(message)s'
     logging.basicConfig(filename=options.logfile, level=logging.INFO, format=FORMAT)
-    
+
     daemon = RouterDaemon(options.configfile, options.pidfile)
     daemon.run()
 
