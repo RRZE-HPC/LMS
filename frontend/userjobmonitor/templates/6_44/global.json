@@ -1,0 +1,61 @@
+{"templating": {
+    "list": [
+      {
+        "allFormat": "regex wildcard",
+        "allValue": null,
+        "current": {
+          "tags": [],
+          "text": "tg050",
+          "value": [
+            "tg050"
+          ]
+        },
+        "datasource": "unrz139",
+        "hide": 0,
+        "includeAll": false,
+        "label": null,
+        "multi": true,
+        "multiFormat": "regex values",
+        "name": "hostname",
+        "options": [],
+        "query": "SHOW TAG VALUES WITH KEY = hostname",
+        "refresh": 1,
+        "regex": "",
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allFormat": "regex wildcard",
+        "allValue": null,
+        "current": {
+          "tags": [],
+          "text": "0",
+          "value": [
+            "0"
+          ]
+        },
+        "datasource": "unrz139",
+        "hide": 0,
+        "includeAll": true,
+        "label": null,
+        "multi": true,
+        "multiFormat": "regex values",
+        "name": "cpuid",
+        "options": [],
+        "query": "SHOW TAG VALUES WITH KEY = cpuid WHERE hostname =~ /$hostname$/",
+        "refresh": 1,
+        "regex": "",
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      }
+    ]
+  }
+}

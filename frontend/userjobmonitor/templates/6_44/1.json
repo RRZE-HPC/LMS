@@ -1,0 +1,115 @@
+{
+  "aliasColors": {},
+  "bars": false,
+  "datasource": "unrz139",
+  "decimals": null,
+  "editable": true,
+  "error": false,
+  "fill": 1,
+  "grid": {},
+  "id": 1,
+  "legend": {
+    "alignAsTable": false,
+    "avg": false,
+    "current": false,
+    "hideEmpty": false,
+    "max": false,
+    "min": false,
+    "rightSide": false,
+    "show": true,
+    "total": false,
+    "values": false
+  },
+  "lines": true,
+  "linewidth": false,
+  "links": [],
+  "nullPointMode": "connected",
+  "percentage": false,
+  "pointradius": 5,
+  "points": false,
+  "renderer": "flot",
+  "seriesOverrides": [],
+  "span": 12,
+  "stack": false,
+  "steppedLine": false,
+  "targets": [
+    {
+      "policy": "default",
+      "dsType": "influxdb",
+      "resultFormat": "time_series",
+      "tags": [
+        {
+          "key": "hostname",
+          "operator": "=~",
+          "value": "/^$hostname$/"
+        }
+      ],
+      "groupBy": [
+        {
+          "type": "time",
+          "params": [
+            "$interval"
+          ]
+        },
+        {
+          "type": "fill",
+          "params": [
+            "null"
+          ]
+        }
+      ],
+      "select": [
+        [
+          {
+            "type": "field",
+            "params": [
+              "value"
+            ]
+          },
+          {
+            "type": "mean",
+            "params": []
+          }
+        ]
+      ],
+      "refId": "A",
+      "measurement": "load_one",
+      "alias": "$m $hostname"
+    }
+  ],
+  "thresholds": [],
+  "timeFrom": null,
+  "timeShift": null,
+  "title": "Load",
+  "tooltip": {
+    "shared": true,
+    "sort": 0,
+    "value_type": "cumulative"
+  },
+  "type": "graph",
+  "xaxis": {
+    "mode": "time",
+    "name": null,
+    "show": true,
+    "values": []
+  },
+  "yaxes": [
+    {
+      "format": "short",
+      "label": null,
+      "logBase": 1,
+      "max": null,
+      "min": null,
+      "show": true
+    },
+    {
+      "format": "short",
+      "label": null,
+      "logBase": 1,
+      "max": null,
+      "min": null,
+      "show": true
+    }
+  ],
+  "transparent": false
+}

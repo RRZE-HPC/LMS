@@ -1,0 +1,4 @@
+The job-dashboard.json contains a dashboard for admins that can be used to
+look at single jobs. This dashboard is used by the adminjobmonitor to create the
+pictures. The job-dashboard.json is automatically added to Grafana by the
+adminjobmonitor.

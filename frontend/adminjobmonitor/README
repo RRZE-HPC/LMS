@@ -1,0 +1,16 @@
+################################################################################
+#     Admin view for jobs in the LMS
+################################################################################
+
+The adminjobmonitor subscribes itself to a ZeroMQ publisher (like the
+one of the InfluxDBRouter) and reacts on signal events. Which event it is can
+be configured in the configuration file. The signal event needs to have a status
+attribute. If this attribute indicates a job start, it creates pictures of
+some panels from a dashboard with jobid as template variable and presents one
+row for each job on the admin dashboard. At job end, the row is removed again.
+The update interval is used to recreate the pictures.
+
+Configuration is done in AdminJobMonitor.conf. See comments inside there for the
+meaning of the options.
+
+Run it simply with adminJobMonitor

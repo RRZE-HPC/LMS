@@ -1,0 +1,20 @@
+################################################################################
+#     User view for jobs in the LMS
+################################################################################
+
+The userjobmonitor subscribes itself to a ZeroMQ publisher (like the
+one of the InfluxDBRouter) and reacts on signal events. Which event it is can
+be configured in the configuration file. The signal event needs to have a status
+attribute. If this attribute indicates a job start, a dashboard for the job is
+created and added to the user's Grafana account. When it indicates a job end,
+the dashboard is only limited in its start and end time, no further changes are
+done. Moreover, there is an interval that is used to check all available
+dashboards. The userjobmonitor deletes dashboards that are older than a
+configurable delete interval, the dashboards are deleted again to tidy up the
+user's list of jobs. The user can keep his/her job dashboards by starring them.
+
+Configuration is done in UserJobMonitor.conf. See comments inside there for the
+meaning of the options.
+
+Run it simply with userJobMonitor
+

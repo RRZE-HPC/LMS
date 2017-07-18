@@ -1,0 +1,105 @@
+{
+  "NonePointMode": "connected",
+  "NoneText": null,
+  "cacheTimeout": null,
+  "colorBackground": false,
+  "colorValue": false,
+  "colors": [
+    "rgba(245, 54, 54, 0.9)",
+    "rgba(237, 129, 40, 0.89)",
+    "rgba(50, 172, 45, 0.97)"
+  ],
+  "datasource": "unrz139",
+  "editable": true,
+  "error": false,
+  "format": "none",
+  "gauge": {
+    "maxValue": 100,
+    "minValue": 0,
+    "show": false,
+    "thresholdLabels": false,
+    "thresholdMarkers": true
+  },
+  "id": 2,
+  "interval": null,
+  "links": [],
+  "mappingType": 1,
+  "mappingTypes": [
+    {
+      "name": "value to text",
+      "value": 1
+    },
+    {
+      "name": "range to text",
+      "value": 2
+    }
+  ],
+  "maxDataPoints": 100,
+  "nullPointMode": "connected",
+  "nullText": null,
+  "postfix": "",
+  "postfixFontSize": "50%",
+  "prefix": "",
+  "prefixFontSize": "50%",
+  "rangeMaps": [
+    {
+      "from": "null",
+      "text": "N/A",
+      "to": "null"
+    }
+  ],
+  "span": 12,
+  "sparkline": {
+    "fillColor": "rgba(31, 118, 189, 0.18)",
+    "full": false,
+    "lineColor": "rgb(31, 120, 193)",
+    "show": false
+  },
+  "targets": [
+    {
+      "alias": "$m $hostname.$cpu",
+      "dsType": "influxdb",
+      "groupBy": [
+        {
+          "params": [
+            "$interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "measurement": "cpi",
+      "policy": "default",
+      "query": "SELECT min(\"value\") FROM \"cpi\" WHERE $timeFilter AND host =~ /^$hostname$/ AND cpu =~ /^$cpuid$/  GROUP BY time($interval), fill(null)",
+      "rawQuery": false,
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "type": "field",
+            "params": [
+              "value"
+            ]
+          },
+          {
+            "type": "mean",
+            "params": []
+          }
+        ]
+      ],
+      "tags": []
+    }
+  ],
+  "thresholds": "",
+  "title": "Min CPI",
+  "type": "singlestat",
+  "valueFontSize": "80%",
+  "valueMaps": [],
+  "valueName": "avg"
+}

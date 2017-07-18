@@ -1,0 +1,129 @@
+{
+  "aliasColors": {},
+  "bars": true,
+  "datasource": "unrz139",
+  "decimals": null,
+  "editable": true,
+  "error": false,
+  "fill": 1,
+  "grid": {},
+  "id": 3,
+  "legend": {
+    "alignAsTable": false,
+    "avg": false,
+    "current": false,
+    "hideEmpty": false,
+    "max": false,
+    "min": false,
+    "rightSide": true,
+    "show": true,
+    "sideWidth": 200,
+    "total": false,
+    "values": false
+  },
+  "lines": true,
+  "linewidth": 1,
+  "links": [],
+  "nullPointMode": "null",
+  "percentage": false,
+  "pointradius": 5,
+  "points": true,
+  "renderer": "flot",
+  "seriesOverrides": [],
+  "span": 12,
+  "stack": false,
+  "steppedLine": false,
+  "targets": [
+    {
+      "alias": "$m $hostname $cpuid",
+      "dsType": "influxdb",
+      "groupBy": [
+        {
+          "params": [
+            "$interval"
+          ],
+          "type": "time"
+        },
+        {
+          "params": [
+            "cpuid"
+          ],
+          "type": "tag"
+        },
+        {
+          "params": [
+            "null"
+          ],
+          "type": "fill"
+        }
+      ],
+      "measurement": "spmflops",
+      "policy": "default",
+      "query": "SELECT last(\"value\") FROM \"spmflops\" WHERE $timeFilter AND host =~ /^$hostname$/ AND cpu =~ /^$cpuid$/  GROUP BY time($interval), \"cpu\", fill(null)",
+      "rawQuery": false,
+      "refId": "A",
+      "resultFormat": "time_series",
+      "select": [
+        [
+          {
+            "params": [
+              "value"
+            ],
+            "type": "field"
+          },
+          {
+            "params": [],
+            "type": "last"
+          }
+        ]
+      ],
+      "tags": [
+        {
+          "key": "hostname",
+          "operator": "=~",
+          "value": "/^$hostname$/"
+        },
+        {
+          "condition": "AND",
+          "key": "cpuid",
+          "operator": "=~",
+          "value": "/^$cpuid$/"
+        }
+      ]
+    }
+  ],
+  "thresholds": [],
+  "timeFrom": null,
+  "timeShift": null,
+  "title": "FP rate (single precision)",
+  "tooltip": {
+    "shared": true,
+    "sort": 2,
+    "value_type": "individual"
+  },
+  "type": "graph",
+  "xaxis": {
+    "mode": "time",
+    "name": null,
+    "show": true,
+    "values": []
+  },
+  "yaxes": [
+    {
+      "format": "short",
+      "label": null,
+      "logBase": 1,
+      "max": null,
+      "min": null,
+      "show": true
+    },
+    {
+      "format": "short",
+      "label": null,
+      "logBase": 1,
+      "max": null,
+      "min": null,
+      "show": true
+    }
+  ]
+}
