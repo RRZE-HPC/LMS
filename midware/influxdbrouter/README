@@ -2,7 +2,7 @@
 ###############################################################################
 
            Readme of the InfluxDB router and tagger
-           Used as part of the FEPA Monitoring Stack
+           Used as part of the LIKWID Monitoring Stack
 
 ###############################################################################
 
@@ -73,7 +73,7 @@ A signal should contain at least a key for storing it in the tag store and
 a list of hosts. When receiving measurements from one of the hosts, the data in
 the tag store is attached to the measurement before forwarding it.
 
-In the FEPA Monitoring stack, this is used to signal job starts and ends on
+In the LIKWID Monitoring stack, this is used to signal job starts and ends on
 the compute nodes. The start and end signal should be sent only once but
 multiple equal signals don't cause problems.
 Who sends the signals doesn't matter. The simplest method is one of the compute
@@ -87,7 +87,7 @@ that needs to be sent through the network is reduced. Caution, only tags in
 signals are attached to matching measurements!
 The field values in a signal can be used to store data that is needed only once
 and only at startup of a job, something like job name, cluster name, ...
-(If you use the grafana agent of the FEPA monitoring stack, all data in the
+(If you use the grafana agent of the LIKWID monitoring stack, all data in the
 start signal measurement is available at dashboard creation)
 
 
