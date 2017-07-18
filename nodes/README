@@ -1,0 +1,66 @@
+###############################################################################
+#       This folder contains stuff used at the nodes
+###############################################################################
+
+# gangliametrics.pl
+Despite the name, it does not send data into Ganglia anymore but that was the
+origin of this script.
+It is a simple Perl script that gathers common data from systems like cpu usage,
+memory usage, network usage but also things like LIKWID or InfiniBand stuff.
+Since systems are quite different, it might be that you have to adjust it to
+your needs.
+It is NOT used in a cronjob but sleeps internally.
+
+## Configuration
+Configuration is done inside the script like sample time (also command line
+option) or paths to specific files. Also the LIKWID command has to be adjusted
+to fulfill the needs.
+
+## Detect what is supported
+$ ./gangliametrics.pl -detect
+This prints in the end a commandline that can be used to run it in loop mode. It
+checks all available 'plugins' and prints out those that can be used on the
+system. If you are missing one, it might be a good indication that the 'plugin'
+needs a fix for the current system
+
+## Run it
+$ ./gangliametrics.pl -loop -enable-X
+This is the loop mode with enabled plugin 'X'. See -help for all supported
+plugins
+
+
+# diamond
+This folder contains some changes and additions to the Diamond host daemon.
+The changes are only related to timestamps and are optional to be applied
+(Patch diamond_collector.patch), see README in diamond for more info.
+
+## handlers
+handlers are possible output handlers. This folder contains a version of
+the InfluxDB output handler that uses only modules from the standard
+library and does not have any dependencies
+
+## collectors
+Collectors contain the functionality to gather data for publishing. Diamond
+offers a variety of own collectors. In the folder are only collectors
+that were added by us over the time: likwid, lustre, infiniband and openfds
+
+
+# scheduler
+This folder contains example prolog and epilog scripts that show how the
+monitoring system coupled with the job scheduler (PBS in the examples).
+
+
+# libusermetric
+A small C/C++ library to add metrics and events from application-level
+See README in libusermetric folder
+
+# bash-preexec.sh
+Script that allows to register callbacks for bash command invocations. You
+can register functions that are called before the actual command is executed
+(preexec_functions) and functions that are called after execution but before
+presenting a new prompt (precmd_functions).
+
+In combination with libusermetric's supply_usermetric it is possible to get
+events for each command that is executed. Although this is almost
+surveillance of the user, it is helpful to know exactly the command that
+was executed.
