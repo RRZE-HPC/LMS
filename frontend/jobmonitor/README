@@ -11,7 +11,7 @@ configuration file. The configuration object is available at self.config .
 
 For use in own scripts:
 #/usr/bin/env python
-from JobMonitor import JobMonitor
+from jobmonitor import JobMonitor
 
 class OwnMonitor(Jobmonitor):
     def start(self):
