@@ -1,0 +1,10 @@
+
+To install the InfluxDB router, just use python, there are not dependencies
+
+$ python setup.py build
+
+$ python setup.py install (--prefix)
+
+Configuration file should be in <prefix>/etc and the router can be started with
+
+$ <prefix>/bin/influxdb-router

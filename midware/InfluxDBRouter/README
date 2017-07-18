@@ -1,0 +1,133 @@
+
+###############################################################################
+
+           Readme of the InfluxDB router and tagger
+           Used as part of the FEPA Monitoring Stack
+
+###############################################################################
+
+
+###############################################################################
+# What is it? 
+###############################################################################
+The InfluxDB router and tagger does what the name implies. It accepts
+measurements in the InfluxDB line protocol (see appropriate section in this
+README), processes them by intersecting them in signal and metric measurements,
+enriching metric measurements with data specified in the signal measurements
+and forwards them into one global database. If configured, the measurements
+are additionally forwarded in other databases based on their attributes (name,
+tags, fields and meta information).
+
+
+
+###############################################################################
+# Installation 
+###############################################################################
+see INSTALL file
+
+###############################################################################
+# Run it 
+###############################################################################
+$ <install_prefix>/bin/influxdb-router
+
+Options are:
+    -c/--config: Location of configuration file
+    -l/--logfile: Location of log file
+    -p/--pidfile: Location of PID file
+
+
+
+###############################################################################
+# InfluxDB line protocol 
+###############################################################################
+
+The InfluxDB line protocol is a http based protocol, so there is a vast amount
+of possible clients. Measurements are expressed with strings in a specific
+syntax:
+name,tagkey1=tagval1,... fieldkey1=fieldval2,... <timestamp>
+Tags are like indicies in the database while fields hold the data, thus it is
+beneficial to add only tags that are required for smooth database usage.
+Fields contain the data like value=1.2 but can also be lists like:
+cpu0=2.4,cpu1=1.2,minimum=1.2,maximum=2.4,mean=1.8
+But values like minimum, maximum and mean are commonly not needed because
+the InfluxDB can do that on the fly when querying data.
+The timestamp is optional and is set the receive time if not included.
+Multiple measurements can be attached together with newlines.
+
+The endpoint to write data is:
+http://<hostname>:<port>/write?db=<database name>
+
+Example to send data into the router/InfluxDB:
+curl -i -XPOST 'http://localhost:8086/write?db=mydb' \
+   --data-binary 'cpu_load_short,host=server01 value=0.64 1434055562000000000'
+
+For more information see the InfluxDB documentation:
+https://docs.influxdata.com/influxdb
+
+###############################################################################
+# Signals (Section SignalConfig in router.conf)
+###############################################################################
+When receiving a signal measurement the status tag is analyzed and based on
+the value, the tags in the measurement are added or deleted from the tag store.
+A signal should contain at least a key for storing it in the tag store and
+a list of hosts. When receiving measurements from one of the hosts, the data in
+the tag store is attached to the measurement before forwarding it.
+
+In the FEPA Monitoring stack, this is used to signal job starts and ends on
+the compute nodes. The start and end signal should be sent only once but
+multiple equal signals don't cause problems.
+Who sends the signals doesn't matter. The simplest method is one of the compute
+nodes sends the signal when a new job is started (prolog script) and ends
+(epilog script). Of course an integration into the job scheduler is possible
+but not needed as the compute nodes commonly have all required information.
+
+The signals contain tags that should be added to all measurements received from
+the hosts, like job identifier or username. With this way, the data volume
+that needs to be sent through the network is reduced. Caution, only tags in
+signals are attached to matching measurements!
+The field values in a signal can be used to store data that is needed only once
+and only at startup of a job, something like job name, cluster name, ...
+(If you use the grafana agent of the FEPA monitoring stack, all data in the
+start signal measurement is available at dashboard creation)
+
+
+
+###############################################################################
+# Data measurements
+###############################################################################
+All non-signal (and if implemented all non-info) measurements are seen as data
+measurements.
+
+###############################################################################
+# Current status for external tools 
+###############################################################################
+The router provides a http endpoint to receive current data from the router
+like all tags.
+The endpoint is: http://<hostname>:<port>/info?entity=<key>
+where <key> is one of:
+- tags : Get current tags
+- hosts: Get all hosts for which tags exist 
+
+###############################################################################
+# Why ZeroMQ? 
+###############################################################################
+In order to easily attach to the data stream the pub/sub mechanism of ZeroMQ
+is perfect. The measurements are published after the processing of the tagger
+but without meta information.
+
+An example tool is the grafana agent which subscribes to the signal measurements
+to create dashboards for the following data measurements.
+
+You can also do stream analysis of specific mesurements and send them back into
+the router. 
+
+###############################################################################
+# Only route! Don't do stuff like attaching tags to my measurements
+###############################################################################
+
+In order to use the router just as forwarder (one router per island forward to
+a central router can be done by setting do_signalling, do_info and do_split to
+False. This forwards everything to AdminDB without any changes.
+Nevertheless it is beneficial to specific drop_tags and filter in the
+same way as the global router instance to reduce the traffic already between
+islands and central entity.
