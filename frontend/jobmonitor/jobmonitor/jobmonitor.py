@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import zmq, re
+import zmq, re, os, os.path, time
 from influxdbmeasurement import Measurement
 from ConfigParser import SafeConfigParser
 
@@ -30,7 +30,7 @@ class JobMonitor(object):
         self.protocol = "tcp"
         self.stat_start = None
         self.stat_end = None
-        self.interval = None
+        self.interval = 300
 
         self.terminate = False
         self.context = None
@@ -75,7 +75,7 @@ class JobMonitor(object):
         if not self.context:
             self.context = zmq.Context()
         if not self.socket:
-            self.socket = context.socket(zmq.SUB)
+            self.socket = self.context.socket(zmq.SUB)
             self.socket.connect(addr)
             if self.filter and len(self.filter) > 0:
                 newfilter = []
@@ -104,8 +104,9 @@ class JobMonitor(object):
 
         interval = self.interval
         while not self.terminate:
+	    s = None
             try:
-                s = socket.recv(flags=zmq.NOBLOCK)
+                s = self.socket.recv(flags=zmq.NOBLOCK)
             except zmq.Again as e:
                 time.sleep(1)
                 interval -= 1
