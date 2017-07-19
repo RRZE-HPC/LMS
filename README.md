@@ -1,8 +1,7 @@
-################################################################################
-#
-#                   LIKWID Monitoring Stack
-#
-################################################################################
+
+
+# LIKWID Monitoring Stack
+
 
 # What is it?
 The LIKWID Monitoring Stack (LMS) is a set of tools and scripts to employ
