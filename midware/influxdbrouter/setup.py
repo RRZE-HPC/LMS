@@ -10,7 +10,7 @@ setup(name='influxdbrouter',
       author_email='Thomas.Roehl@fau.de',
       packages=["influxdbrouter"],
       scripts=["scripts/startjob.py", "scripts/endjob.py"],
-      data_files=[("etc" , ["influxdb-router.conf"])],
+      data_files=[("etc" , ["./influxdbrouter.conf"])],
       entry_points={
         'console_scripts': [
             'influxdb-router=influxdbrouter.influxdbrouter:main'
