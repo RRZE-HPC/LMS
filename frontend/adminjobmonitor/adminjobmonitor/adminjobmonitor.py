@@ -3,8 +3,8 @@
 import os, sys, os.path, re, hashlib, signal
 from optparse import OptionParser
 
-from JobMonitor.JobMonitor import JobMonitor
-from InfluxDBRouter.InfluxDBMeasurement import Measurement
+from jobmonitor import JobMonitor, Measurement
+
 
 from ConfigParser import SafeConfigParser
 from pygrafana.api import Connection
