@@ -1,0 +1,114 @@
+################################################################################
+#     Comments how to use LIKWID in the LMS
+################################################################################
+
+LIKWID is used in the LMS to gather data from hardware performance counters like
+floating-point rate or memory bandwidth. There are some variants how LIKWID can
+be used in the cluster, either as a complete system-side tool or as a mixture of
+system- and user-side tool where users can (if requested) measure their own
+applications. The later variant disables system-side monitoring of hardware
+performance counters (and only them) during the user's job.
+
+################################################################################
+#     Installing LIKWID
+################################################################################
+LIKWID is a tool suite for performance related tasks. It features the listing of
+the current system architecture, pinning threads according to thread affinity
+groups and hardware performance monitoring. In the LMS, the mainly used
+component is hardware performance monitoring.
+
+The installation is quite easy:
+# Download the current release:
+wget ftp://ftp.fau.de/mirrors/likwid/likwid-stable.tar.gz
+# Unpack it
+tar -xzf likwid-stable.tar.gz
+# Enter folder and configure the compilation
+cd likwid-stable
+vi/emacs/nano config.mk
+# Build it
+make
+# Install it
+make install
+
+For some distributions packages exist. You can use them as well and it is
+recommended.
+
+
+################################################################################
+#     LIKWID only for system-side
+################################################################################
+
+In order to use it only on the system-side, the configuration is quite easy.
+I recommend to set the access mode the direct and the user who uses LIKWID
+(in diamond, Shell script, ...) should have enough rights to access the MSR
+and PCI devices directly. This reduces the overhead of the measurements and
+simpifies the installation of performance groups.
+
+################################################################################
+#     LIKWID only for system- and user-side
+################################################################################
+For dual usage of LIKWID, it is recommended to use the accessdaemon as access
+mode, because this is the default mode for users. The system user can simply use
+a command line switch to access the devices directly.
+
+- Create a user with sufficient permission to access MSR and PCI devices
+- In config.mk of LIKWID set a suitable LIKWIDLOCKPATH
+- Create the file in LIKWIDLOCKPATH owned by the newly created user (this allows
+  only this user to use LIKWID)
+- If the user requests LIKWID usage, just change the owner in the prolog script
+  of the job scheduling software to the job user
+- In the epilog change the owner of the LIKWIDLOCKPATH file back to the system
+  user
+
+See scheduler folder for examples how to do it for torque and slurm.
+
+################################################################################
+#     Create performance group for monitoring
+################################################################################
+Creating performance groups for LIKWID is just editing a txt file. Commonly
+LIKWID installs its performance groups in $PREFIX/share/likwid/perfgroups which
+can be used as basis for the creation of new files.
+
+First you need the short name of the microarchitecture. The short name is
+printed by 'likwid-perfctr -i' and looks like "haswellEP" or "westmere"
+
+Got into the users home and create a folder:
+$ mkdir -p $HOME/.likwid/groups/<short name>
+(The group is only visible for the user)
+
+Afterwards create a new performance group named <NAME>.txt in the folder. <NAME>
+is the one used on the command line of likwid-perfctr after -g.
+
+A file generally looks like this:
+SHORT <short string describing the group>
+
+EVENTSET
+<COUNTER1> <EVENT1>
+<COUNTER2> <EVENT2>
+[...]
+
+METRICS
+<METRIC1> <FORMULA1>
+<METRIC2> <FORMULA2>
+[...]
+
+LONG
+<long description of group, problems with the group, ...>
+
+Where the formula is a calculation using the <COUNTER1>, <COUNTER2>, ... entries
+as variables, e.g.: <COUNTER1>/<COUNTER2> or (<COUNTER1> + <COUNTER2>)*64/runtime
+
+There are two variables that can be used inside the formulas:
+    - time: The measurement time
+    - inverseClock: The inverse of the nominal CPU Clock
+
+For monitoring, the metric name <METRICx> should be a string without spaces and
+rather short, like mem_band, dpmflops or cpi.
+
+A good base for creating a performance group for your systems are the MEM_DP and
+MEM_SP groups if available for the microarchitecture because they already contain
+the counters and metric formulas for double-/single-precision FP rate, memory
+bandwidth and energy and can be easily adapted by just changing the metric names
+and removing all data volume metrics.
+
+Some example groups can be found in the likwid folder
