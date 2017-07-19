@@ -21,4 +21,7 @@ package. If there are problems with that handler, you can also use
 does not require the installation of any python package, it just uses
 stuff from the standard library
 
-
+Custom collectors are in the collectors folder. They are not part of the default
+diamond version but it is planned to submit them to the upstream project as 
+soon as possible. The collectors are likwid, infiniband, lustre and openfds
+(open files)

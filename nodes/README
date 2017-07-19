@@ -47,7 +47,7 @@ that were added by us over the time: likwid, lustre, infiniband and openfds
 
 # scheduler
 This folder contains example prolog and epilog scripts that show how the
-monitoring system coupled with the job scheduler (PBS in the examples).
+monitoring system coupled with the job scheduler.
 
 
 # libusermetric
@@ -63,4 +63,7 @@ presenting a new prompt (precmd_functions).
 In combination with libusermetric's supply_usermetric it is possible to get
 events for each command that is executed. Although this is almost
 surveillance of the user, it is helpful to know exactly the command that
-was executed.
+was executed. There is no example script for this, but in the script it would
+be helpful to filter the events before submitting it, for example to send events
+only for applications under a specific path (module home, user home, ..) or when
+they match some string, for example gcc and icc.
