@@ -16,12 +16,36 @@ The patch 'diamond_collector.patch' can be used to add this functionality
 to Diamond
 
 Diamond provides an output handler for InfluxDB using the python influxdb
-package. If there are problems with that handler, you can also use
+package. The problem with this one is that it has a severe bug. It formats the
+measurements not in a way that the python influxdb client supports.
+I added a patch for this handler to set tags properly and use the right format.
+$ cd Diamond
+$ patch -p1 < influxdbHandler.patch
+
+If there are problems with that handler, you can also use
 'influxdbHandlerNative' which uses the urllib2 to send the metrics. It
 does not require the installation of any python package, it just uses
 stuff from the standard library
+The plan is to unify both handlers and provide a config option which method
+should be used if the python influxdb client is installed.
 
 Custom collectors are in the collectors folder. They are not part of the default
 diamond version but it is planned to submit them to the upstream project as 
 soon as possible. The collectors are likwid, infiniband, lustre and openfds
 (open files)
+
+Please check the dependencies of Diamond and the selected collectors/handlers.
+
+
+Configuration for both influxdbHandler in diamond.conf is:
+[[InfluxdbHandler]]
+hostname = <hostname>
+port = <8086 for direct to InfluxDB or 8090 for Router>
+batch_size = 10 # default to 1
+cache_size = 1000 # default to 20000
+username = testuser
+password = testpass
+database = testdatabase # has to be created manually
+time_precision = n
+
+
