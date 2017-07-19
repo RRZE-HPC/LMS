@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import zmq
+import zmq, re
 from influxdbmeasurement import InfluxDBMeasurement
 from ConfigParser import SafeConfigParser
 
@@ -23,7 +23,7 @@ class JobMonitor(object):
         self.configfile = configfile
         self.config = None
 
-        self.filter = None
+        self.filter = []
         self.stat_attr = None
         self.hostname = "localhost"
         self.port = 8091
@@ -35,7 +35,7 @@ class JobMonitor(object):
         self.terminate = False
         self.context = None
         self.socket = None
-    def read_config(self, configfile=None):
+    def read_def_config(self, configfile=None):
         self.config = None
         if configfile and os.path.exists(configfile):
             self.config = SafeConfigParser()
@@ -57,15 +57,17 @@ class JobMonitor(object):
         if "status_attr" in defs:
             self.status_attr = defs["status_attr"]
         if "filter" in defs and len(defs["filter"]) > 0:
-            self.filter = defs["filter"]
+            self.filter = re.split("\s*,\s*", str(defs["filter"]))
         if "create_at_status" in defs:
             self.stat_start = defs["create_at_status"]
         if "delete_at_status" in defs:
             self.stat_end = defs["delete_at_status"]
-        if "update_inverval" in defs:
-            i = parse_interval(defs["update_inverval"])
+        if "update_interval" in defs:
+            i = parse_interval(defs["update_interval"])
             if i:
                 self.interval = i
+    def read_config(self, configfile=None):
+        read_def_config(configfile=configfile)
     def connect(self, configfile=None):
         if not self.config:
             self.read_config(configfile=configfile)
@@ -76,12 +78,24 @@ class JobMonitor(object):
             self.socket = context.socket(zmq.SUB)
             self.socket.connect(addr)
             if self.filter and len(self.filter) > 0:
-                self.socket.setsockopt(zmq.SUBSCRIBE, self.filter)
+                newfilter = []
+                for f in self.filter:
+                    if not f.startswith("*"):
+                        self.socket.setsockopt(zmq.SUBSCRIBE, f)
+                    else:
+                        newfilter.append(f)
+                self.filter = newfilter
     def disconnect(self):
         if self.socket:
             self.socket.close()
         if self.context:
             self.context.term()
+    def _filter(self, str_m):
+        match = True
+        for f in self.filter:
+            if f not in str_m:
+                match = False
+        return match
     def recv_loop(self, configfile=None):
         if not self.config:
             self.read_config(configfile=configfile)
@@ -100,16 +114,19 @@ class JobMonitor(object):
                     interval = self.interval
             except KeyboardInterrupt:
                 break
-            m = Measurement(s)
-            stat = m.get_attr(self.stat_attr)
-            if stat == self.stat_start:
-                self.start()
-            elif stat == self.stat_end:
-                self.finish()
+            if s and self._filter(s):
+                m = Measurement(s)
+                stat = m.get_attr(self.stat_attr)
+                if stat == self.stat_start:
+                    self.start(m)
+                elif stat == self.stat_end:
+                    self.finish(m)
+                self.get(m)
         self.disconnect()
     def update(self):
         pass
-    def start(self):
+    def start(self, m):
         pass
-    def stop(self):
+    def stop(self, m):
         pass
+    def get(self, m):
