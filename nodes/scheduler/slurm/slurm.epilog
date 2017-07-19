@@ -1,0 +1,16 @@
+
+# Signal the ending of a job
+# The nodefile (-M) and the Job identifier (-j) are the minimum parameters.
+# Further information can be supplied with -f
+if [ -e /usr/local/bin/endjob.py ]; then
+    NODEFILE=/tmp/hostlist.$$
+    scontrol show hostname ${SLURM_NODELIST} > ${NODEFILE}
+    /usr/local/bin/endjob.py -M ${NODEFILE} -j ${SLURM_JOB_ID}
+    rm ${NODEFILE}
+fi
+
+LIKWID_LOCK=/var/run/likwid.lock
+# return permission to hpcop for system monitoring
+if [ -f ${LIKWID_LOCK} ]; then
+        chown hpcop:root ${LIKWID_LOCK}
+fi
