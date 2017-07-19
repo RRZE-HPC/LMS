@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import zmq, re
-from influxdbmeasurement import InfluxDBMeasurement
+from influxdbmeasurement import Measurement
 from ConfigParser import SafeConfigParser
 
 def parse_interval(interval):
@@ -42,7 +42,7 @@ class JobMonitor(object):
             fp = open(configfile, "r")
             self.config.readfp(fp)
             fp.close()
-        if not c and os.path.exists(self.configfile):
+        if not self.config and os.path.exists(self.configfile):
             self.config = SafeConfigParser()
             fp = open(self.configfile, "r")
             self.config.readfp(fp)
@@ -130,3 +130,4 @@ class JobMonitor(object):
     def stop(self, m):
         pass
     def get(self, m):
+	pass
