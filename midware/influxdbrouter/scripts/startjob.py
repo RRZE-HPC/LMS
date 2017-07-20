@@ -3,10 +3,10 @@
 import urllib2, getopt, sys, os.path, re
 import getpass, time
 
-ROUTER_HOST = "fepa.rrze.uni-erlangen.de"
+ROUTER_HOST = "testhost.testdomain.de"
 ROUTER_PORT = 8090
 SIGNAL_MEASUREMENT = "baseevents"
-SIGNAL_DB = "tinygpu"
+SIGNAL_DB = "testdatabase"
 
 def usage():
     print "%s -j <jobid> -m <hostlist> (-M hostfile) -t <tagkey1>=<tagval1> -f <fieldkey1>:<fieldval1>" % (os.path.basename(sys.argv[0]),)
@@ -100,27 +100,16 @@ fields["stat"] = trycast("start")
 registerstr = "%s" % (SIGNAL_MEASUREMENT)
 for t in tags:
     registerstr += ",%s=%s" % (t, str(tags[t]))
-#    if " " in str(tags[t]) or "," in str(tags[t]):
-#        registerstr += ",%s=\"%s\"" % (t, trycast(tags[t]))
-#    else:
-#        registerstr += ",%s=%s" % (t, trycast(tags[t]))
 registerstr += " "
 for f in fields:
     registerstr += ",%s=%s" % (f, trycast(fields[f]))
-#    if " " in str(fields[f]) or "," in str(fields[f]):
-#        registerstr += ",%s=\"%s\"" % (f, trycast(fields[f]))
-#    else:
-#        registerstr += ",%s=%s" % (f, trycast(fields[f]))
 
 registerstr = registerstr.replace(" ,"," ")
 registerstr += " %d" % int(time.time()*1E9)
 
 url = "http://%s:%d/write?db=%s" % (ROUTER_HOST, ROUTER_PORT, SIGNAL_DB,)
-print(url)
-print(registerstr)
 req = urllib2.Request(url, str(registerstr))
 try:
     resp = urllib2.urlopen(req)
 except urllib2.URLError as e:
-    print "Cannot register job"
-#    print e
+    print "Failed to unregister job: %s" % e

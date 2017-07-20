@@ -45,7 +45,15 @@ def handle_signal(sig):
             while daemon.receiver.store.send_required():
                 daemon.receiver.store.send_all()
 
-
+def cast_bool(v):
+    if isinstance(v, str):
+        if v.lower() in ("true", "yes", "y"):
+            return True
+        return False
+    elif isinstance(v, int):
+        if v != 0: return True
+        return False
+    return False
 
 def is_number(s):
     try:
@@ -423,7 +431,7 @@ class InfluxReceiver(ThreadingMixIn, HTTPServer, object):
             for k in self.splitconf:
                 if self.config.has_option("SplitConfig", k):
                     self.splitconf[k] = self.config.get("SplitConfig", k).strip()
-        self.splitconf["do_split"] = bool(self.splitconf["do_split"])
+        self.splitconf["do_split"] = cast_bool(self.splitconf["do_split"])
         self.splitconf["delete_format_tags"] = bool(self.splitconf["delete_format_tags"])
         self.splitconf["dbentries"] = re.split("\s*,\s*", self.splitconf["dbentries"])
 

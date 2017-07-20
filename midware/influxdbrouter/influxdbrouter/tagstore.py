@@ -40,7 +40,7 @@ class Tagger(object):
 
         self.lock.acquire()
         for h in hostlist:
-            if h in tags_by_host:
+            if h in self.tags_by_host:
                 del self.tags_by_host[h]
         self.lock.release()
         return True

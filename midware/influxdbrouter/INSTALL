@@ -1,5 +1,7 @@
 
-To install the InfluxDB router, just use python, there are not dependencies
+To install the InfluxDB router, just use python, there are no other dependencies
+If you want to use the ZeroMQ publisher, please ensure that python-zmq is
+installed and works.
 
 $ python setup.py build
 
@@ -8,3 +10,9 @@ $ python setup.py install (--prefix)
 Configuration file should be in <prefix>/etc and the router can be started with
 
 $ <prefix>/bin/influxdb-router
+    Possible options are:
+        -h/--help : Help Text
+        -c/--config FILE: Configuration file
+        -l/--log FILE: Logfile
+        -p/--pid FILE: PID file
+
