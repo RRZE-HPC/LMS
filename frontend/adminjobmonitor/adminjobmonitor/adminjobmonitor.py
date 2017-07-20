@@ -3,12 +3,16 @@
 import os, sys, os.path, re, hashlib, signal
 from optparse import OptionParser
 
-from JobMonitor.JobMonitor import JobMonitor
-from InfluxDBRouter.InfluxDBMeasurement import Measurement
+from jobmonitor import JobMonitor, Measurement
+
 
 from ConfigParser import SafeConfigParser
 from pygrafana.api import Connection
 import pygrafana.dashboard as pydash
+
+jobdashboard = None
+jobdashpanels = None
+
 
 def get_cast(v):
     if isinstance(v, bool) or str(v).lower() in ("true", "false"):
@@ -86,6 +90,7 @@ def create_adm_job_panel(m):
         jobdashboard = gcon.get_dashboard(name_to_slug(self.adminconf["pix_dashboard"]), oid=self.adminconf["oid"])
     global jobdashpanels
     if not jobdashpanels:
+        jobdashpanels = {}
         for ppart in self.adminconf["panels"]:
             for r in jobdashboard["dashboard"]["rows"]:
                 for p in r["panels"]:
@@ -139,81 +144,11 @@ def create_adm_job_panel(m):
 
     return panel
 
-def add_admin_job(newjob):
-    jobid = newjob.get_attr("tags.jobid")
-    print("Add %s to admin_view" % jobid)
-    try:
-        d = gcon.get_dashboard(name_to_slug(adminconf["dashboard"]), oid=adminconf["oid"])
-        d = pydash.read_json(d)
-    except:
-        d = pydash.Dashboard(title=adminconf["dashboard"])
-        pass
-    print(d)
 
-    panel = create_adm_job_panel(newjob)
-    
-    i = 1
-    for r in d.rows:
-        print("\""+str(r)+"\"")
-        for p in r.panels:
-            i = p["id"]+1
-            break
-    panel.set_id(i)
-    row = pydash.Row(title=jobid)
-    row.add_panel(panel)
-    d.rows = [row] + d.rows
-    d.set_overwrite(True)
-    f = open("admindash.json", "w")
-    f.write(json.dumps(d.get(), sort_keys=True, indent=4, separators=(',', ': ')))
-    f.close()
-    try:
-        ret = gcon.add_dashboard(d)
-    except:
-        print("Cannot upload updated dashboard")
-    jobstore[jobid] = newjob
         
 
 
-def del_admin_job(deljob):
-    jobid = deljob.get_attr("tags.jobid")
-    if not jobid:
-        print("Cannot delete job without JobID")
-        return
-    print("Remove %s from admin_view" % jobid)
 
-    try:
-        d = gcon.get_dashboard(name_to_slug(adminconf["dashboard"]), oid=adminconf["oid"])
-        d = pydash.read_json(d)
-    except:
-        print("Cannot download admin dashboard %s" % adminconf["dashboard"])
-        return
-    idx = -1
-    for i,r in enumerate(d.rows):
-        if r.title == jobid:
-            idx = i
-            break
-    if idx >= 0:
-        del d.rows[idx]
-        idx = 1
-        for r in d.rows:
-            for p in r.panels:
-                p.set_id(idx)
-                idx += 1
-    else:
-        print("Cannot find job %s in dashboard" % jobid)
-        return
-    try:
-        d.gcon.add_dashboard(d)
-    except:
-        print("Cannot upload updated dashboard")
-    hstr = ""
-    for elem in adminconf["pix_hash"]:
-        hstr += deljob.get_attr(elem)
-    h = hashlib.sha224(hstr)
-    pixfolder = os.path.join(adminconf["pix_path"], str(h.hexdigest()))
-    if os.path.exists(pixfolder):
-        os.remove(pixfolder)
-    del jobstore[jobid]
     
 
 
@@ -224,6 +159,7 @@ def update_admin_pix():
         jobdashboard = gcon.get_dashboard(name_to_slug(adminconf["pix_dashboard"]), oid=adminconf["oid"])
     global jobdashpanels
     if not jobdashpanels:
+        jobdashpanels = {}
         for ppart in adminconf["panels"]:
             for r in jobdashboard["dashboard"]["rows"]:
                 for p in r["panels"]:
@@ -317,13 +253,85 @@ class AdminJobMonitor(JobMonitor):
                 for u in admins:
                     self.gcon.add_uid_to_orgid(u["id"], oid, login=u["login"])
             self.adminconf["oid"] = oid
+    def add_admin_job(newjob):
+        jobid = newjob.get_attr("tags.jobid")
+        print("Add %s to admin_view" % jobid)
+        try:
+            d = self.gcon.get_dashboard(name_to_slug(adminconf["dashboard"]), oid=adminconf["oid"])
+            d = pydash.read_json(d)
+        except:
+            d = pydash.Dashboard(title=adminconf["dashboard"])
+            pass
+        print(d)
+
+        panel = create_adm_job_panel(newjob)
+        
+        i = 1
+        for r in d.rows:
+            print("\""+str(r)+"\"")
+            for p in r.panels:
+                i = p["id"]+1
+                break
+        panel.set_id(i)
+        row = pydash.Row(title=jobid)
+        row.add_panel(panel)
+        d.rows = [row] + d.rows
+        d.set_overwrite(True)
+        f = open("admindash.json", "w")
+        f.write(json.dumps(d.get(), sort_keys=True, indent=4, separators=(',', ': ')))
+        f.close()
+        try:
+            ret = self.gcon.add_dashboard(d)
+        except:
+            print("Cannot upload updated dashboard")
+        jobstore[jobid] = newjob
+    def del_admin_job(deljob):
+        jobid = deljob.get_attr("tags.jobid")
+        if not jobid:
+            print("Cannot delete job without JobID")
+            return
+        print("Remove %s from admin_view" % jobid)
+
+        try:
+            d = self.gcon.get_dashboard(name_to_slug(adminconf["dashboard"]), oid=adminconf["oid"])
+            d = pydash.read_json(d)
+        except:
+            print("Cannot download admin dashboard %s" % adminconf["dashboard"])
+            return
+        idx = -1
+        for i,r in enumerate(d.rows):
+            if r.title == jobid:
+                idx = i
+                break
+        if idx >= 0:
+            del d.rows[idx]
+            idx = 1
+            for r in d.rows:
+                for p in r.panels:
+                    p.set_id(idx)
+                    idx += 1
+        else:
+            print("Cannot find job %s in dashboard" % jobid)
+            return
+        try:
+            self.gcon.add_dashboard(d)
+        except:
+            print("Cannot upload updated dashboard")
+        hstr = ""
+        for elem in adminconf["pix_hash"]:
+            hstr += deljob.get_attr(elem)
+        h = hashlib.sha224(hstr)
+        pixfolder = os.path.join(adminconf["pix_path"], str(h.hexdigest()))
+        if os.path.exists(pixfolder):
+            os.remove(pixfolder)
+        del jobstore[jobid]
     def start(self, m):
         if not self.gcon:
             self.open_grafana_con()
-        add_admin_job(m)
+        self.add_admin_job(m)
     def stop(self, m):
-        del_admin_job(m)
-    def update(self, m):
+        self.del_admin_job(m)
+    def update(self):
         update_admin_pix()
 
 
@@ -332,6 +340,7 @@ def main():
     parser.add_option("-c", "--config", dest="configfile", help="Configuration file", default=sys.argv[0]+".conf", metavar="FILE")
     (options, args) = parser.parse_args()
     mymon = AdminJobMonitor(configfile=options.configfile)
+    mymon.read_config()
     mymon.recv_loop()
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-import zmq, re
-from influxdbmeasurement import InfluxDBMeasurement
+import zmq, re, os, os.path, time
+from influxdbmeasurement import Measurement
 from ConfigParser import SafeConfigParser
 
 def parse_interval(interval):
@@ -30,7 +30,7 @@ class JobMonitor(object):
         self.protocol = "tcp"
         self.stat_start = None
         self.stat_end = None
-        self.interval = None
+        self.interval = 300
 
         self.terminate = False
         self.context = None
@@ -42,7 +42,7 @@ class JobMonitor(object):
             fp = open(configfile, "r")
             self.config.readfp(fp)
             fp.close()
-        if not c and os.path.exists(self.configfile):
+        if not self.config and os.path.exists(self.configfile):
             self.config = SafeConfigParser()
             fp = open(self.configfile, "r")
             self.config.readfp(fp)
@@ -75,7 +75,7 @@ class JobMonitor(object):
         if not self.context:
             self.context = zmq.Context()
         if not self.socket:
-            self.socket = context.socket(zmq.SUB)
+            self.socket = self.context.socket(zmq.SUB)
             self.socket.connect(addr)
             if self.filter and len(self.filter) > 0:
                 newfilter = []
@@ -104,8 +104,9 @@ class JobMonitor(object):
 
         interval = self.interval
         while not self.terminate:
+            s = None
             try:
-                s = socket.recv(flags=zmq.NOBLOCK)
+                s = self.socket.recv(flags=zmq.NOBLOCK)
             except zmq.Again as e:
                 time.sleep(1)
                 interval -= 1
@@ -116,11 +117,13 @@ class JobMonitor(object):
                 break
             if s and self._filter(s):
                 m = Measurement(s)
-                stat = m.get_attr(self.stat_attr)
-                if stat == self.stat_start:
-                    self.start(m)
-                elif stat == self.stat_end:
-                    self.finish(m)
+                if self.stat_attr:
+                    stat = m.get_attr(self.stat_attr)
+                    if stat:
+                        if stat == self.stat_start:
+                            self.start(m)
+                        elif stat == self.stat_end:
+                            self.finish(m)
                 self.get(m)
         self.disconnect()
     def update(self):
@@ -130,3 +133,4 @@ class JobMonitor(object):
     def stop(self, m):
         pass
     def get(self, m):
+        pass
