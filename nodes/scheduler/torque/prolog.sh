@@ -41,5 +41,5 @@ fi
 
 # Print the link to the job's dashboard
 GRAFANA_URL=http://testhost.testdomain.de:3000/
-GRAFANA_SLUG=$(echo ${PBS_JOBID/./-} | awk '{print tolower($0)}')
+GRAFANA_SLUG=$(echo ${PBS_JOBID//./-} | awk '{print tolower($0)}')
 echo "Job monitoring: see at ${GRAFANA_URL}/dashboard/db/${GRAFANA_SLUG}"

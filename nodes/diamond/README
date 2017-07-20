@@ -48,4 +48,6 @@ password = testpass
 database = testdatabase # has to be created manually
 time_precision = n
 
+Collectors just need to be copied in the configured collectors_path while
+handlers go to handlers_path (see diamond.conf)
 

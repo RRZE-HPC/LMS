@@ -3,10 +3,10 @@
 import urllib2, getopt, sys, os.path, re
 import getpass, time
 
-ROUTER_HOST = "fepa.rrze.uni-erlangen.de"
+ROUTER_HOST = "testhost.testdomain.de"
 ROUTER_PORT = 8090
 SIGNAL_MEASUREMENT = "baseevents"
-SIGNAL_DB = "tinygpu"
+SIGNAL_DB = "testdatabase"
 
 def usage():
     print "%s -j <jobid> -m <hostlist> (-M hostfile)" % (os.path.basename(sys.argv[0]),)
@@ -16,8 +16,7 @@ def usage():
     print "-j/--jobid\tJob identifier"
     print "-m/--hosts\tComma-separated list of hosts"
     print "-M/--Hosts\tPath to file with hostnames (currently only PBS format)"
-#    print "-t/--tag k=v\tKey/value pair that is added to tags"
-#    print "-f/--field k=v\tKey/value pair that is added to fields"
+    print "-f/--field k=v\tKey/value pair that is added to fields"
 
 def trycast(v):
     m = re.match("^\d+$", str(v))
@@ -45,7 +44,7 @@ tags = {}
 fields = {}
 hostfile = None
 try:
-    opts, args = getopt.getopt(sys.argv[1:], "hj:m:M:", ["help", "jobid:", "hosts:"])
+    opts, args = getopt.getopt(sys.argv[1:], "hj:m:M:f:", ["help", "jobid:", "hosts:", "field:"])
 except getopt.GetoptError as err:
     # print help information and exit:
     print str(err)  # will print something like "option -a not recognized"
@@ -76,10 +75,10 @@ for o, a in opts:
 #        if "=" in a:
 #            alist = a.split("=")
 #            tags[alist[0]] = "=".join(alist[1:])
-#    elif o in ("-f", "--field"):
-#        if "=" in a:
-#            alist = a.split("=")
-#            fields[alist[0]] = "=".join(alist[1:])
+    elif o in ("-f", "--field"):
+        if "=" in a:
+            alist = a.split("=")
+            fields[alist[0]] = "=".join(alist[1:])
     else:
         assert False, "unhandled option"
 
@@ -108,11 +107,8 @@ registerstr = registerstr.replace(" ,"," ")
 registerstr += " %d" % int(time.time()*1E9)
 
 url = "http://%s:%d/write?db=%s" % (ROUTER_HOST, ROUTER_PORT, SIGNAL_DB,)
-print(url)
-print(registerstr)
 req = urllib2.Request(url, str(registerstr))
 try:
     resp = urllib2.urlopen(req)
 except urllib2.URLError as e:
-    print "Cannot register job"
-#    print e
+    print "Failed to register job: %s" % e

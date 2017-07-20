@@ -3,7 +3,7 @@
 # LIKWID Monitoring Stack
 
 
-# What is it?
+## What is it?
 The LIKWID Monitoring Stack (LMS) is a set of tools and scripts to employ
 job specific monitoring on a small to midsized HPC cluster. It contains
 components running on the compute nodes, a tool to route the measurements as
@@ -27,18 +27,18 @@ is scriptable and has a good HTTP API for management. It would be tedious to
 create dashboards for each job manually, thus agents provide automatic
 generation or manipulations of dashboards.
 
-# Is it complete?
+## Is it complete?
 It is never complete! Things are changing, some people require features that are
 currently not provided by the LMS: New metrics? New node agent? New grafana
 agent?
 
-# More documentation?
+## More documentation?
 Each folder contains a README file about the content in the folder.
 
-# License
+## License
 All stuff in this repository is GPLv3. This might not fit for third-party
 components like diamond, InfluxDB or Grafana.
 
-# Help
+## Help
 If you have problems, please open an issue
 For other things, please write me an email: Thomas.Roehl@fau.de
