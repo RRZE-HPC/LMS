@@ -67,7 +67,7 @@ class JobMonitor(object):
             if i:
                 self.interval = i
     def read_config(self, configfile=None):
-        read_def_config(configfile=configfile)
+        self.read_def_config(configfile=configfile)
     def connect(self, configfile=None):
         if not self.config:
             self.read_config(configfile=configfile)
@@ -85,6 +85,8 @@ class JobMonitor(object):
                     else:
                         newfilter.append(f)
                 self.filter = newfilter
+            else:
+                self.socket.setsockopt(zmq.SUBSCRIBE, "")
     def disconnect(self):
         if self.socket:
             self.socket.close()
