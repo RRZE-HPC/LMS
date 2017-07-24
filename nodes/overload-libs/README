@@ -1,0 +1,21 @@
+###############################################################################
+# GCC
+###############################################################################
+For libraries with source in C, the common gcc is enough to build all overload
+libraries.
+In order to create a new overload library, create a file called <lib>_ops.dat
+with each line containing a function header. For each function, a overloaded
+version is created
+###############################################################################
+# G++ (like Intel OpenMP) (experimental)
+###############################################################################
+To overlaod the Intel OpenMP runtime, slightly more work is needed. First, you
+have to download the current source code of the Intel OpenMP runtime from
+http://releases.llvm.org/download.html . Unpack it and run cmake so that some
+required headers are generated. Besides the headers, the compilation requires
+an enum that must be generated manually:
+cd openmp-4.0.0.src
+./runtime/tools/message-converter.pl --enum-file=runtime/src/kmp_i18n_id.inc ./runtime/src/i18n/en_US.txt --os=lin --prefix=kmp_i18n
+Now make should create the iomp_overload library, the build of the openmp
+runtime is not required.
+

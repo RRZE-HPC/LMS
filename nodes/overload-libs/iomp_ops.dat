@@ -1,0 +1,4 @@
+# kmp.h
+void __kmp_serialized_parallel(ident_t *id, kmp_int32 gtid)
+void   __kmpc_barrier ( ident_t *id, kmp_int32 global_tid )
+void   __kmpc_fork_call( ident_t *id, kmp_int32 nargs, kmpc_micro microtask, ... )

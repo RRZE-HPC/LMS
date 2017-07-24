@@ -1,0 +1,7 @@
+
+void* malloc(size_t size)
+    post: sendevent Size:size
+void free(void *ptr)
+    pre: sendevent
+void *realloc(void *ptr, size_t size)
+    post: sendevent Size:size

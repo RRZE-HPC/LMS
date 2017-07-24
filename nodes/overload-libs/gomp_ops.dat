@@ -1,0 +1,7 @@
+# omp.h
+void GOMP_parallel_start (void (*fn)(void *), void *data, unsigned num_threads)
+void GOMP_parallel_end (void)
+void __builtin_GOMP_parallel_start(void (*fn)(void *), void *data, unsigned num_threads)
+void __builtin_GOMP_parallel_end(void)
+void GOMP_barrier (void)
+void GOMP_parallel (void (*fn) (void *), void *data, unsigned num_threads, unsigned int flags)
