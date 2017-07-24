@@ -9,6 +9,10 @@ class Measurement(object):
         self.mstr = None
         self.idxs = []
         self.meta = {}
+        self.tags = {}
+        self.fields = {}
+        self.metric = ""
+        self.timestamp = None
         for i in range(4):
             self.idxs.append([0,0])
         self.names = ["measurement", "tags", "fields", "timestamp"]
@@ -30,11 +34,13 @@ class Measurement(object):
             for i, c in enumerate(mstr):
                 if c == ' ':
                     self.idxs[0][1] = i
+                    self.metric = mstr[start:i]
                     start = i+1
                     self.idxs[1][0] = start
                     break
                 elif c == ',':
                     self.idxs[0][1] = i
+                    self.metric = mstr[start:i]
                     start = i+1
                     self.idxs[1][0] = start
                     hastags = True
@@ -68,6 +74,8 @@ class Measurement(object):
                     self.idxs[2][0] = self.idxs[1][0]
                     self.idxs[2][1] = self.idxs[1][1]
                     self.idxs[1] = [-1,-1]
+        self.fields = self._get_all_pairs(2)
+        self.tags = self._get_all_pairs(1)
     def debug(self):
             print(self.mstr)
             print(self.idxs)
@@ -92,16 +100,18 @@ class Measurement(object):
         return -1,-1
 
     def get_tag(self, key):
-        s, e = self._get_idxs_from_str(key, self.idxs[1])
-        if s > 0:
-            #print("Tag: %s = %s" % (key, self.mstr[s:e]))
-            return self.mstr[s:e]
+#        s, e = self._get_idxs_from_str(key, self.idxs[1])
+#        if s > 0:
+#            return self.mstr[s:e]
+        if key in self.tags:
+            return self.tags[key]
         return None
     def get_field(self, key):
-        s, e = self._get_idxs_from_str(key, self.idxs[2])
-        if s > 0:
-            #print("Field: %s = %s" % (key, self.mstr[s:e]))
-            return self.mstr[s:e]
+#        s, e = self._get_idxs_from_str(key, self.idxs[2])
+#        if s > 0:
+#            return self.mstr[s:e]
+        if key in self.fields:
+            return self.fields[key]
         return None
     def get_meta(self, key):
         if key in self.meta:
@@ -136,9 +146,9 @@ class Measurement(object):
         tags[k] = self._trycast(v)
         return tags
     def get_all_tags(self):
-        return self._get_all_pairs(1)
+        return self.tags
     def get_all_fields(self):
-        return self._get_all_pairs(2)
+        return self.fields
     def get_all_meta(self):
         return self.meta
     def has_tags(self):
@@ -183,10 +193,11 @@ class Measurement(object):
                 if self.idxs[i][0] >= 0:
                     self.idxs[i][0] += add_len
                     self.idxs[i][1] += add_len
+            self.tags[key] = value
             return True
         else:
-            s, e = self._get_idxs_from_str(key, self.idxs[1])
-            if s == -1:
+            #s, e = self._get_idxs_from_str(key, self.idxs[1])
+            if key not in self.tags:
                 repl = self.mstr[self.idxs[1][1]-5:self.idxs[1][1]]
                 add = ","+str(key)+"="+str(self._trycast(value))
                 add_len = len(add)
@@ -196,6 +207,7 @@ class Measurement(object):
                     if self.idxs[i][0] >= 0:
                         self.idxs[i][0] += add_len
                         self.idxs[i][1] += add_len
+                self.tags[key] = value
                 return True
             else:
                 print("Tag with key %s already exists with value %s" % (key, self.mstr[s:e]))
@@ -222,6 +234,7 @@ class Measurement(object):
                         if self.idxs[i][0] >= 0:
                             self.idxs[i][0] += diff
                             self.idxs[i][1] += diff
+                    self.tags[key] = value
                     return True
             else:
                 self.add_tag(key, value)
@@ -259,6 +272,7 @@ class Measurement(object):
                     if self.idxs[i][0] >= 0:
                         self.idxs[i][0] -= repl_len
                         self.idxs[i][1] -= repl_len
+                del self.tags[key]
     def del_field(self, key):
         if self.idxs[2][0] != -1:
             s, e = self._get_idxs_from_str(key, self.idxs[2])
@@ -278,11 +292,12 @@ class Measurement(object):
                 if self.idxs[3][0] >= 0:
                     self.idxs[3][0] -= repl_len
                     self.idxs[3][1] -= repl_len
+                del self.fields[key]
                 if self.idxs[2][0] == self.idxs[2][1]:
                     print("Deleted last field. Current state is invalid, there must be at least one field entry")
     def add_field(self, key, value):
-        s, e = self._get_idxs_from_str(key, self.idxs[2])
-        if s == -1:
+        #s, e = self._get_idxs_from_str(key, self.idxs[2])
+        if key not in self.fields:
             repl = self.mstr[self.idxs[2][1]-5:self.idxs[2][1]]
             add = ","+str(key)+"="+str(self._trycast(value))
             add_len = len(add)
@@ -291,6 +306,7 @@ class Measurement(object):
             if self.idxs[3][0] >= 0:
                 self.idxs[3][0] += add_len
                 self.idxs[3][1] += add_len
+            self.fields[key] = value
             return True
         else:
             print("Field with key %s already exists with value %s" % (key, self.mstr[s:e]))
@@ -307,12 +323,15 @@ class Measurement(object):
             self.mstr = self.mstr.replace(repl, str(time), 1)
             if len(repl) != len(str(time)):
                 self.idxs[3][1] = self.idxs[3][0] + len(str(time)) + 1
-
+        self.timestamp = self.mstr[self.idxs[3][0]:self.idxs[3][1]]
     def get_metric(self):
         return self.mstr[self.idxs[0][0]:self.idxs[0][1]]
     def get_time(self):
-        if self.idxs[3][0] != -1:
-            return int(self.mstr[self.idxs[3][0]:self.idxs[3][1]])
+        if self.timestamp:
+            return self.timestamp
+        elif self.idxs[3][0] != -1:
+            self.timestamp = int(self.mstr[self.idxs[3][0]:self.idxs[3][1]])
+            return self.timestamp
         return None
     def get_datetime(self):
         if self.idxs[3][0] != -1:
@@ -340,29 +359,40 @@ class Measurement(object):
     def get_attr(self, attr):
         alist = attr.split(".")
         len_alist = len(alist)
-        if len_alist >= 1 and len_alist < 3 and alist[0] in ("tags", "fields", "measurement", "meta"):
+        if len_alist >= 1 and len_alist < 3 and alist[0] in self.names:
             if alist[0] == "tags":
-                s,e = self._get_idxs_from_str(alist[1], self.idxs[1])
-                if s > 0:
-                    return self.mstr[s:e].strip("\"")
+                v = self.get_tag(alist[1])
+                if v:
+                    return v.strip("\"")
+#                s,e = self._get_idxs_from_str(alist[1], self.idxs[1])
+#                if s > 0:
+#                    return self.mstr[s:e].strip("\"")
             elif alist[0] == "fields":
-                s,e = self._get_idxs_from_str(alist[1], self.idxs[2])
-                if s > 0:
-                    return self.mstr[s:e].strip("\"")
+                v = self.get_field(alist[1])
+                if v:
+                    return v.strip("\"")
+#                s,e = self._get_idxs_from_str(alist[1], self.idxs[2])
+#                if s > 0:
+#                    return self.mstr[s:e].strip("\"")
             elif alist[0] == "measurement":
-                return self.mstr[self.idxs[0][0]:self.idxs[0][1]]
+                return self.metric
+                #return self.mstr[self.idxs[0][0]:self.idxs[0][1]]
             elif alist[0] == "meta":
                 if alist[1] in self.meta:
                     return self.meta[alist[1]].strip("\"")
             elif alist[0] == "any":
                 if alist[1] in self.meta:
                     return self.meta[alist[1]].strip("\"")
-                s,e = self._get_idxs_from_str(alist[1], self.idxs[1])
-                if s > 0:
-                    return self.mstr[s:e].strip("\"")
-                s,e = self._get_idxs_from_str(alist[1], self.idxs[2])
-                if s > 0:
-                    return self.mstr[s:e].strip("\"")
+                if alist[1] in self.tags:
+                    return self.tags[alist[1]].strip("\"")
+                if alist[1] in self.fields:
+                    return self.fields[alist[1]].strip("\"")
+#                s,e = self._get_idxs_from_str(alist[1], self.idxs[1])
+#                if s > 0:
+#                    return self.mstr[s:e].strip("\"")
+#                s,e = self._get_idxs_from_str(alist[1], self.idxs[2])
+#                if s > 0:
+#                    return self.mstr[s:e].strip("\"")
         else:
             print("Unknown attribute specifier, must be either tag.X, fields.Y, meta.Z or measurement")
         return None

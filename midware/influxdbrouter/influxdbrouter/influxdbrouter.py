@@ -232,6 +232,10 @@ class MeasurementStore(object):
 
 
     def send_required(self):
+        """
+        Check whether a send is required. This is the case if the queue contains data below batch
+        size but timeout has passed or there are enough metrics in a queue to send a batch
+        """
         close_q = datetime.datetime.now() - datetime.timedelta(seconds=self.timeout)
         for key in self.dbs:
             if key in self.buffer and self.buffer[key].empty() and self.addtimes[key] < close_q:
@@ -243,6 +247,7 @@ class MeasurementStore(object):
                 del self.dbs[key]
                 del self.buffer[key]
                 self.db_hosts[dbhost]["activedbs"].remove(key)
+                logging.info("Closing Queue for key '%s'" % key)
                 self.lock.release()
         if len(self.active_keys) > 0:
             for key in self.active_keys:
@@ -256,6 +261,10 @@ class MeasurementStore(object):
         return False
 
     def add(self, m):
+        """
+        Add a measurement to the store. The destination database is specified by the meta information 'db'.
+        If no queue exists for the database, a new one with maximal size 'maxcache' is created.
+        """
         key = m.get_meta("db")
         if key not in self.buffer:
             dbhost = self.select_db_host(key)
@@ -278,7 +287,31 @@ class MeasurementStore(object):
         self.buffer[key].put(m)
         if self.buffer[key].qsize() > self.db_hosts[self.dbs[key]]["batch"]:
             self.batch_ready.put(key)
+    def _send_influx(hostname, port, db, metrics, headers={}):
+        url = "http://%s:%s/write?db=%s" % (hostname, str(port), db)
+
+        if not "Content-Type" in headers:
+            headers.update({"Content-Type" : "application/octet-stream"})
+        req = urllib2.Request(url, "\n".join(metrics), headers=headers)
+        logging.debug("Send %d metrics to %s" % (len(metrics), url,))
+        try:
+            resp = urllib2.urlopen(req)
+            resp.close()
+        except urllib2.URLError as e:
+            logging.warn("Send of %d metric batch failed, sending line by line" % (len(metrics)))
+            for si in metrics:
+                req = urllib2.Request(url, si, headers=headers)
+                try:
+                    resp = urllib2.urlopen(req)
+                    resp.close
+                except:
+                    logging.error("Cannot send measurement to %s:\n%s" % (url,si))
+                    pass
+        return
     def send(self, key, batch=0):
+        """
+        Send data for database 'key' with batch size of 'batch'.
+        """
         sendlist = []
         delkeys = []
         if key not in self.dbs:
@@ -287,43 +320,46 @@ class MeasurementStore(object):
             dbhost = self.dbs[key]
         if batch == 0:
             batch = self.db_hosts[dbhost]["batch"]
-        items = 0
         if key not in self.buffer:
-            logging.info("No store available for key '%s'" % key)
+            logging.warn("No store available for key '%s'" % key)
             return
-        while not self.buffer[key].empty() and items < batch:
-            sendlist.append(str(self.buffer[key].get()))
-            items += 1
-        if items == 0:
+        # Prepare batch
+        if self.buffer[key].qsize() > batch:
+            for i in range(batch):
+                sendlist.append(str(self.buffer[key].get()))
+        if len(sendlist) == 0:
             return
+
         hostname = self.db_hosts[self.dbs[key]]["hostname"]
         port = self.db_hosts[self.dbs[key]]["port"]
+#        self._send_influx(hostname, port, key, sendlist, headers=self.heads)
         url = "http://%s:%s/write?db=%s" % (hostname, str(port), key)
         req = urllib2.Request(url, "\n".join(sendlist), headers=self.heads)
-        logging.info("Send %d metrics to %s" % (len(sendlist), url,))
+        logging.debug("Send %d metrics to %s" % (len(sendlist), url,))
         try:
             resp = urllib2.urlopen(req)
             resp.close()
         except urllib2.URLError as e:
-            logging.info("\n".join(sendlist))
-            logging.info("ERROR")
-            logging.info(e)
+            logging.warn("Send of %d metric batch failed, sending line by line" % (len(sendlist)))
             for si in sendlist:
                 req = urllib2.Request(url, si, headers=self.heads)
                 try:
                     resp = urllib2.urlopen(req)
                     resp.close
                 except:
-                    logging.info("Cannot send measurement to %s:\n%s" % (url,si))
+                    logging.error("Cannot send measurement to %s:\n%s" % (url,si))
                     pass
+
         if self.buffer[key].empty():
             self.lock.acquire()
-            for key in delkeys:
-                del self.buffer[key]
-                del self.addtimes[key]
-                self.active_keys.remove(key)
+            logging.info("Closing Queue for key '%s'" % key)
+            del self.buffer[key]
+            del self.addtimes[key]
+            self.active_keys.remove(key)
             self.lock.release()
     def send_all(self):
+        logging.debug("Sending one batch to each active database")
+        still_ready = []
         while not self.batch_ready.empty():
             key = self.batch_ready.get()
             self.send(key, batch=self.db_hosts[self.dbs[key]]["batch"])
@@ -547,9 +583,12 @@ class InfluxReceiveHandler(BaseHTTPRequestHandler):
                 # Sometimes the measurement contains tags that are not wanted in
                 # the database. We can drop them here
                 tags = m.get_all_tags()
+                deltags = []
                 for k in self.server.drop_tags:
                     if k in tags:
-                        m.del_tag(k)
+                        deltags.append(k)
+                for k in deltags:
+                    m.del_tag(k)
 
                 # Store it for admin database
                 self.server.store.add(m)
@@ -560,7 +599,8 @@ class InfluxReceiveHandler(BaseHTTPRequestHandler):
 
                 # Should we split and is the host of the measurement
                 # in a job currently?
-                if self.server.splitconf["do_split"] and self.server.tagger.host_active(m.get_attr(self.server.metricconf["hostkey"])):
+                hostkey = m.get_attr(self.server.metricconf["hostkey"])
+                if self.server.splitconf["do_split"] and hostkey and self.server.tagger.host_active(hostkey):
                     # Copy the measurement
                     newm = Measurement(m)
                     # Get the format of the new database
@@ -570,13 +610,16 @@ class InfluxReceiveHandler(BaseHTTPRequestHandler):
                     # Try to replace variables in format with measurements entries
                     if "tags." in udb:
                         tags = newm.get_all_tags()
+                        deltags = []
                         for t in tags:
                             if "[tags.%s]" % t in udb:
                                 udb = udb.replace("[tags.%s]" % t, tags[t])
                                 # We can delete this tag, it is already stored
                                 # as database name
                                 if self.server.splitconf["delete_format_tags"]:
-                                    newm.del_tag(t)
+                                    deltags.append(t)
+                        for t in deltags:
+                            newm.del_tag(t)
                     if "field." in udb:
                         fields = newm.get_all_fields()
                         for f in fields:
@@ -765,7 +808,7 @@ def main():
     (options, args) = parser.parse_args()
 
     FORMAT = '%(asctime)s %(message)s'
-    logging.basicConfig(filename=options.logfile, level=logging.INFO, format=FORMAT)
+    logging.basicConfig(filename=options.logfile, level=logging.DEBUG, format=FORMAT)
 
     daemon = RouterDaemon(options.configfile, options.pidfile)
     daemon.run()
