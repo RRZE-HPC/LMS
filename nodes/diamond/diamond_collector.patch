@@ -1,10 +1,22 @@
-373,374c373,374
-<     def publish(self, name, value, raw_value=None, precision=0,
-<                 metric_type='GAUGE', instance=None):
----
->     def publish(self, name, value, raw_value=None, timestamp=None, 
->                 precision=0, metric_type='GAUGE', instance=None):
-395c395
-<             metric = Metric(path, value, raw_value=raw_value, timestamp=None,
----
->             metric = Metric(path, value, raw_value=raw_value, timestamp=timestamp,
+diff -Nur Diamond.orig/src/diamond/collector.py Diamond/src/diamond/collector.py
+--- Diamond.orig/src/diamond/collector.py	2017-05-02 18:39:35.000000000 +0200
++++ Diamond/src/diamond/collector.py	2017-07-28 10:35:46.022698000 +0200
+@@ -371,7 +371,7 @@
+         raise NotImplementedError()
+ 
+     def publish(self, name, value, raw_value=None, precision=0,
+-                metric_type='GAUGE', instance=None):
++                metric_type='GAUGE', instance=None, timestamp=None):
+         """
+         Publish a metric with the given name
+         """
+@@ -392,7 +392,7 @@
+ 
+         # Create Metric
+         try:
+-            metric = Metric(path, value, raw_value=raw_value, timestamp=None,
++            metric = Metric(path, value, raw_value=raw_value, timestamp=timestamp,
+                             precision=precision, host=self.get_hostname(),
+                             metric_type=metric_type, ttl=ttl)
+         except DiamondException:
+
