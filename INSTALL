@@ -1,0 +1,110 @@
+################################################################################
+#           Installation of LMS
+################################################################################
+
+# On the nodes:
+Currently, the LMS contains two node-level tools to measure stuff and send it
+into the remaining system.
+
+## Diamond
+The Diamond host agent is a well-known host agent with a lot of measurement
+plugins and output handlers to a lot of backends.
+
+You can get it from https://github.com/python-diamond/Diamond
+If you need it as RPM or other package format, the control files are included in
+the repository.
+
+The general installation out of the repository is:
+python setup.py build
+sudo python setup.py install
+You can of course also use the ones in your package repository
+
+BUT: The current output handler for the InfluxDB is broken. There is already a
+pull request in the diamond repository but it is not applied yet.
+
+The LMS contains some metric collectors for Diamond that are not part of the
+default package. You can simply copy them to the proper path after installation
+of Diamond or include it in a custom-mode package
+
+For more information about diamond in the LMS see folder nodes/diamond
+
+## hostmetrics.pl
+If you don't want to have a big tool on the compute nodes, you can also use
+the hostmetrics.pl Perl script. It does generally the same as diamond but might
+use different metric names. In contrast to Diamond it is not threaded, this has
+on the one hand the disadvantage that a check might block but on the other hand
+if you do LIKWID measurements, you don't want that something different than the
+actual application is running during the LIKWID measurements (what could happen
+with diamond)
+
+Currently there is no systemctl file or similar, it is your choice how to
+integrate it in the host system. It is _not_ meant as a cron job, it runs
+infinitely.
+
+An exmaple would be the starting of hostmetrics.pl in the prolog script of a job
+and stop it again in the epilog script.
+
+# Middleware
+The middleware currently contains the influxdbrouter which is used to
+tag, forward and split the measurements and feed them into databases and a
+gmond parser.
+
+
+
+## influxdbrouter
+The installation follows the common Python setuptools way:
+python setup.py build
+sudo python setup.py install
+
+For further details look at LMS/midware/influxdbrouter
+
+### Dependencies
+InfluxDB, python-zmq
+
+## gmondParser.py
+If you have a Ganglia Monitoring System already in place, you can use this
+script to periodically retrieve the measurements from Ganglia's gmond through
+its XML interface and forward them into the influxdbrouter
+
+Keep in mind that Ganglia has nothing like start/stop signals, so you need to
+get the signals from somewhere else. For example you could parse pbsnodes
+(Torque) or something similar for other job schedulers. Or you send the signals
+as in prolog and epilog like shown in nodes/scheduler/*
+
+# Frontend
+The frontend is a normal installation of Grafana (get latest release from
+grafana.org). You need to add a user for the dashboard management scripts with
+admin priviledges.
+
+## adminJobMonitor
+The adminJobMonitor manages one dashboard listing all currently running jobs.
+It subscribes itself to the ZeroMQ publisher of influxdbrouter and listens
+for start and stop signals. At start, the job list on the dashboard is extended.
+Similarily, the job is removed from the dashboard at the stop signal.
+
+### Dependencies
+python-zmq, pygrafana (see LMS/frontend folder)
+
+The installation follows the common Python setuptools way:
+python setup.py build
+sudo python setup.py install
+
+For further details look at LMS/frontend/adminjobmonitor
+
+## userJobMonitor
+The userJobMonitor manages templatable dashboards for user jobs. It subscribes
+itself to the ZeroMQ publisher of influxdbrouter and listens for start and stop
+signals. At the start signal the dashboard is created using inputs from
+templates. At stop, only the endtime of the dashboard is changed to show only
+the time range where the job was running. Additionally there is an delete
+interval where all jobs older than some time are deleted (except if they are
+starred = 'I want to keep this job')
+
+### Dependencies
+python-zmq, pygrafana (see LMS/frontend folder)
+
+The installation follows the common Python setuptools way:
+python setup.py build
+sudo python setup.py install
+
+For further details look at LMS/frontend/adminjobmonitor
