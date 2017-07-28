@@ -10,4 +10,4 @@ Dependencies:
 
 The measured metrics depend on the groups that this collector should measure.
 
-
+For example groups look at the folder LMS/nodes/likwid/groups
