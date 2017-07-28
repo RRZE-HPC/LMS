@@ -2,7 +2,7 @@
 #       This folder contains stuff used at the nodes
 ###############################################################################
 
-# gangliametrics.pl
+# hostmetrics.pl
 Despite the name, it does not send data into Ganglia anymore but that was the
 origin of this script.
 It is a simple Perl script that gathers common data from systems like cpu usage,
@@ -17,14 +17,14 @@ option) or paths to specific files. Also the LIKWID command has to be adjusted
 to fulfill the needs.
 
 ## Detect what is supported
-$ ./gangliametrics.pl -detect -sampletime 1
+$ ./hostmetrics.pl -detect -sampletime 1
 This prints in the end a commandline that can be used to run it in loop mode. It
 checks all available 'plugins' and prints out those that can be used on the
 system. If you are missing one, it might be a good indication that the 'plugin'
 needs a fix for the current system
 
 ## Run it
-$ ./gangliametrics.pl -loop -enable-X -enable-Y
+$ ./hostmetrics.pl -loop -enable-X -enable-Y
 This is the loop mode with enabled plugin 'X'. See -help for all supported
 plugins. The complete command line including all enable and disable options
 are printed by -detect
