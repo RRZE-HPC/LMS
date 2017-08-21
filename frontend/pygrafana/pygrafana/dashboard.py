@@ -1649,7 +1649,6 @@ class GraphPanel(PlotPanel):
                          description=description)
         self.type = "graph"
         self.bars = False
-        self.targets = []
         self.nullPointMode = "connected"
         self.renderer = "flot"
         self.linewidth = 2
