@@ -4,12 +4,12 @@
 PyGrafana is a python interface to Grafana. It is built of two seperate parts:
 a Grafana dashboard interface and an interface to Grafana's HTTP API.
 
-# Where can I get it?
-Currently there is only a repository for PyGrafana:
-https://github.com/TomTheBear/pygrafana
+# How to install it?
 The installation is the default python setuptools way:
+```
 $ python setup.py build
 $ sudo python setup.py install
+```
 
 # Dashboard module
 The dashboard module encapsulates many Grafana options in Python classes and
@@ -41,5 +41,3 @@ if con.is_connected:
     con.add_dashboard(dashboard)
 ```
 
-# More information
-See GitHub page of PyGrafana https://github.com/TomTheBear/pygrafana
