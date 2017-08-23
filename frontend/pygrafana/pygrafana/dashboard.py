@@ -305,7 +305,7 @@ class Target(object):
         :return True/False
         """
         debug_print("Target: set_dsType(%s)" % str(dsType))
-        if not (isinstance(dsType, str) or isinstance(t, unicode)):
+        if not (isinstance(dsType, str) or isinstance(dsType, unicode)):
             try:
                 dsType = str(dsType)
             except ValueError:
@@ -320,7 +320,7 @@ class Target(object):
         :return True/False
         """
         debug_print("Target: set_refId(%s)" % str(refId))
-        if not (isinstance(refId, str) or isinstance(t, unicode)):
+        if not (isinstance(refId, str) or isinstance(refId, unicode)):
             try:
                 refId = str(refId)
             except ValueError:
@@ -337,7 +337,7 @@ class Target(object):
         :return True/False
         """
         debug_print("Target: set_alias(%s)" % str(alias))
-        if not (isinstance(alias, str) or isinstance(t, unicode)):
+        if not (isinstance(alias, str) or isinstance(alias, unicode)):
             try:
                 alias = str(alias)
             except ValueError:
@@ -665,7 +665,7 @@ class Legend(object):
         l += "hideEmpty=%s, sideWidth=%s)" % (str(self.hideEmpty), str(sideWidth),)
         return l
     def read_json(self, j):
-        if isinstance(j, str) or isinstance(t, unicode):
+        if isinstance(j, str) or isinstance(j, unicode):
             j = json.loads(j)
         if j.has_key("total"):
             self.set_total(j["total"])
@@ -731,7 +731,7 @@ class Grid(object):
     def __repr__(self):
         return str(self.get())
     def read_json(self, j):
-        if isinstance(j, str) or isinstance(t, unicode):
+        if isinstance(j, str) or isinstance(j, unicode):
             j = json.loads(j)
         if j.has_key("leftMax"):
             self.set_leftMax(j["leftMax"])
@@ -937,7 +937,7 @@ class TablePanelNumberStyle(TablePanelStyle):
                               'pressurembar', 'pressurehpa',
                               'velocityms', 'velocitykmh', 'velocitymph', 'velocityknot']
     def set_unit(self, u):
-        if (isinstance(u, str) or isinstance(t, unicode)) and u in self.validYFormats:
+        if (isinstance(u, str) or isinstance(u, unicode)) and u in self.validYFormats:
             self.unit = u
             return True
         return False
@@ -3648,6 +3648,8 @@ class Dashboard(object):
 def read_json(dstr):
     dash = None
     if isinstance(dstr, str) or isinstance(dstr, unicode):
+        if isinstance(dstr, unicode):
+            dstr = dstr.replace("u'","'").replace("\"", "\\\"").replace("'","\"").replace("True","true").replace("False","false").replace("None","null")
         try:
             dash = json.loads(dstr)
         except ValueError as e:
