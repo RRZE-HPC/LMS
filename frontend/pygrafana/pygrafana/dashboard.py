@@ -3616,7 +3616,7 @@ class Dashboard(object):
         return False
     def set_startTime(self, t):
         # check time
-        if isinstance(t, str or isinstance(t, unicode)):
+        if isinstance(t, str) or isinstance(t, unicode):
             self.startTime = t
         if isinstance(t, int) or isinstance(t, float) or isinstance(t, datetime.datetime):
             self.startTime = str(t)
