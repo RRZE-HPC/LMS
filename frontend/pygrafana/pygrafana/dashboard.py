@@ -116,10 +116,10 @@ class Target(object):
         :param resultFormat: Currently the only supported option is 'time_series'. There are others but not implemented yet.
         """
         self.dsType = dsType
-        self.tags = tags
-        self.groupBy = groupBy
+        self.tags = []
+        self.groupBy = []
         self.alias = alias
-        self.select = select
+        self.select = [[]]
         self.measurement = measurement
         self.query = query
         self.policy = policy
@@ -129,6 +129,12 @@ class Target(object):
         self.validResultFormat = ["time_series"]
         self.grafana_version = grafana_version
         self.rawQuery = rawQuery
+        for t in tags:
+            self.tags.append(t)
+        for t in groupBy:
+            self.groupBy.append(t)
+        for t in select[0]:
+            self.select[0].append(t)
     def get(self):
         """
         Returns a dictionary with the Target object's configuration. Performs some sanitation like removing duplicated groupBy options
@@ -936,6 +942,10 @@ class TablePanelNumberStyle(TablePanelStyle):
                               'celsius', 'farenheit', 'humidity',
                               'pressurembar', 'pressurehpa',
                               'velocityms', 'velocitykmh', 'velocitymph', 'velocityknot']
+        for c in colors:
+            self.colors.append(c)
+        for t in thresholds:
+            self.thresholds.append(t)
     def set_unit(self, u):
         if (isinstance(u, str) or isinstance(u, unicode)) and u in self.validYFormats:
             self.unit = u
@@ -1018,7 +1028,7 @@ class TablePanel(Panel):
         self.fontSize = "100%"
         self.showHeader = True
         self.transparent = False
-        self.targets = []
+        self.links = []
         self.styles = []
         self.columns = []
         self.scroll = True
@@ -1033,6 +1043,12 @@ class TablePanel(Panel):
         self.set_fontSize(fontSize)
         self.set_error(error)
         self.set_datasource(datasource)
+        for s in styles:
+            self.styles.append(s)
+        for l in links:
+            self.links.append(l)
+        for c in columns:
+            self.columns.append(c)
     def set_transform(self, t):
         debug_print("TablePanel: set_transform(%s)" % str(t))
         if (isinstance(t, str) or isinstance(t, unicode)) and t in self.validTransform:
@@ -1311,11 +1327,15 @@ class PlotPanel(Panel):
                        editable=True, isNew=True, links=[], span=12,
                        description=None):
         Panel.__init__(self, span=span, editable=editable, title=title, description=description)
-        self.links = links
+        self.links = []
         self.isNew = isNew
         self.error = error
         self.datasource = datasource
-        self.targets = targets
+        self.targets = []
+        for l in links:
+            self.links.append(l)
+        for t in targets:
+            self.targets.append(t)
     def set_isNew(self, b):
         debug_print("PlotPanel: set_isNew(%s)" % str(b))
         if isinstance(b, bool):
@@ -1684,7 +1704,8 @@ class GraphPanel(PlotPanel):
         self.set_linewidth(linewidth)
         self.set_steppedLine(steppedLine)
         self.set_fill(fill)
-        self.seriesOverrides = seriesOverrides
+        for s in seriesOverrides:
+            self.seriesOverrides.append(s)
         self.set_percentage(percentage)
         self.set_xaxis(xaxis)
         self.grid = grid
@@ -2100,7 +2121,6 @@ class PiePanel(PlotPanel):
                          datasource=datasource, error=error, span=span, editable=editable,
                          description=description)
         self.type = "grafana-piechart-panel"
-        self.targets = []
         self.pieType = "pie"
         self.aliasColors = {}
         self.cacheTimeout = None
@@ -2471,7 +2491,6 @@ class SingleStat(PlotPanel):
         self.cacheTimeout=None
         self.colorBackground=False
         self.colorValue=False
-        self.colors=[]
         self.format="none"
         self.gauge=Gauge()
         self.interval=None
@@ -2485,7 +2504,6 @@ class SingleStat(PlotPanel):
         self.sparkline=Sparkline()
         self.thresholds=""
         self.valueFontSize="80%"
-        self.valueMaps=[]
         self.valueName="avg"
         self.invertColors=False
         self.decimals=None
@@ -2506,9 +2524,6 @@ class SingleStat(PlotPanel):
         self.colors = []
         for c in colors:
             self.add_color(c)
-        self.targets = []
-        for t in targets:
-            self.add_target(t)
         self.set_format(format)
         self.set_gauge(gauge)
         self.set_interval(interval)
@@ -3256,9 +3271,13 @@ class Template(object):
 class Timepicker(object):
     def __init__(self, time_options=['5m', '15m', '1h', '6h', '12h', '24h', '2d', '7d', '30d'],
                        refresh_intervals=['5s', '10s', '30s', '1m', '5m', '15m', '30m', '1h', '2h', '1d'], now=True):
-        self.time_options = time_options
-        self.refresh_intervals = refresh_intervals
-        self.now=True
+        self.time_options = []
+        for o in time_options:
+            self.time_options.append(o)
+        self.refresh_intervals = []
+        for o in refresh_intervals:
+            self.refresh_intervals.append(o)
+        self.now=now
     def set_time_options(self, t):
         if isinstance(t, list):
             self.time_options = copy.deepcopy(t)
@@ -3457,6 +3476,16 @@ class Dashboard(object):
             self.schemaVersion = 12
         elif grafana_version.startswith("4"):
             self.schemaVersion = 14
+        for r in rows:
+            self.add_row(r)
+        for l in links:
+            self.links.append(l)
+        for t in tags:
+            self.tags.append(l)
+        for t in templates:
+            self.templates.append(t)
+        for a in annotations:
+            self.annotations.append(a)
     def get_slug(self):
         return self.slug
     def add_template(self, t):
