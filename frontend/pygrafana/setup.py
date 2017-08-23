@@ -27,7 +27,7 @@ setup(
     data_files = [
 #        "pygrafana.api" : ["api.py"],
 #        "pygrafana.dashboard" : ["dashboard.py"],
-        ("tests" , ["test.py", "tests/add_ds.py", "tests/add_user.py",
+        ("tests" , ["tests/add_ds.py", "tests/add_user.py",
             "tests/add_org.py", "tests/overview.py"])
     ],
 )
