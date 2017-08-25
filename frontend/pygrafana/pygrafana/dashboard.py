@@ -34,7 +34,7 @@ def check_timerange(t):
     :param t: timerange string
     :return True/False
     """
-    if isinstance(t, str):
+    if isinstance(t, str) or isinstance(t, unicode):
         if time == "now":
             return True
         if "now" in t:
@@ -61,7 +61,7 @@ def check_color(c):
     :param c: Color string or tuple
     :return c or None
     """
-    if isinstance(c, str):
+    if isinstance(c, str) or isinstance(c, unicode):
         m = re.match("rgba\((\d+),\s*(\d+),\s*(\d+),\s*(0.[\d]+)\)", c)
         if m and int(m.group(1)) < 255 and int(m.group(2)) < 255 and int(m.group(3)) < 255 and float(m.group(4)) > 0 and float(m.group(4)) <= 1:
             return c
@@ -116,10 +116,10 @@ class Target(object):
         :param resultFormat: Currently the only supported option is 'time_series'. There are others but not implemented yet.
         """
         self.dsType = dsType
-        self.tags = tags
-        self.groupBy = groupBy
+        self.tags = []
+        self.groupBy = []
         self.alias = alias
-        self.select = select
+        self.select = [[]]
         self.measurement = measurement
         self.query = query
         self.policy = policy
@@ -129,6 +129,12 @@ class Target(object):
         self.validResultFormat = ["time_series"]
         self.grafana_version = grafana_version
         self.rawQuery = rawQuery
+        for t in tags:
+            self.tags.append(t)
+        for t in groupBy:
+            self.groupBy.append(t)
+        for t in select[0]:
+            self.select[0].append(t)
     def get(self):
         """
         Returns a dictionary with the Target object's configuration. Performs some sanitation like removing duplicated groupBy options
@@ -305,7 +311,7 @@ class Target(object):
         :return True/False
         """
         debug_print("Target: set_dsType(%s)" % str(dsType))
-        if not isinstance(dsType, str):
+        if not (isinstance(dsType, str) or isinstance(dsType, unicode)):
             try:
                 dsType = str(dsType)
             except ValueError:
@@ -320,7 +326,7 @@ class Target(object):
         :return True/False
         """
         debug_print("Target: set_refId(%s)" % str(refId))
-        if not isinstance(refId, str):
+        if not (isinstance(refId, str) or isinstance(refId, unicode)):
             try:
                 refId = str(refId)
             except ValueError:
@@ -337,7 +343,7 @@ class Target(object):
         :return True/False
         """
         debug_print("Target: set_alias(%s)" % str(alias))
-        if not isinstance(alias, str):
+        if not (isinstance(alias, str) or isinstance(alias, unicode)):
             try:
                 alias = str(alias)
             except ValueError:
@@ -438,7 +444,7 @@ class Target(object):
         :param sel_params: Parameter to the groupBy type.
         :return True/False
         """
-        if isinstance(j, str):
+        if isinstance(j, str) or isinstance(j, unicode):
             try:
                 j = json.loads(j)
             except Exception as e:
@@ -552,7 +558,7 @@ class Tooltip(object):
     def __repr__(self):
         return "Tooltip(shared=%s, value_type=\"%s\", sort=%d, msResolution=%s)" % (str(self.shared), self.value_type, self.sort, str(self.msResolution),)
     def read_json(self, j):
-        if isinstance(j, str):
+        if isinstance(j, str) or isinstance(j, unicode):
             j = json.loads(j)
         if j.has_key("shared"):
             self.set_shared(j["shared"])
@@ -665,7 +671,7 @@ class Legend(object):
         l += "hideEmpty=%s, sideWidth=%s)" % (str(self.hideEmpty), str(sideWidth),)
         return l
     def read_json(self, j):
-        if isinstance(j, str):
+        if isinstance(j, str) or isinstance(j, unicode):
             j = json.loads(j)
         if j.has_key("total"):
             self.set_total(j["total"])
@@ -731,7 +737,7 @@ class Grid(object):
     def __repr__(self):
         return str(self.get())
     def read_json(self, j):
-        if isinstance(j, str):
+        if isinstance(j, str) or isinstance(j, unicode):
             j = json.loads(j)
         if j.has_key("leftMax"):
             self.set_leftMax(j["leftMax"])
@@ -936,8 +942,12 @@ class TablePanelNumberStyle(TablePanelStyle):
                               'celsius', 'farenheit', 'humidity',
                               'pressurembar', 'pressurehpa',
                               'velocityms', 'velocitykmh', 'velocitymph', 'velocityknot']
+        for c in colors:
+            self.colors.append(c)
+        for t in thresholds:
+            self.thresholds.append(t)
     def set_unit(self, u):
-        if isinstance(u, str) and u in self.validYFormats:
+        if (isinstance(u, str) or isinstance(u, unicode)) and u in self.validYFormats:
             self.unit = u
             return True
         return False
@@ -1018,7 +1028,7 @@ class TablePanel(Panel):
         self.fontSize = "100%"
         self.showHeader = True
         self.transparent = False
-        self.targets = []
+        self.links = []
         self.styles = []
         self.columns = []
         self.scroll = True
@@ -1033,15 +1043,21 @@ class TablePanel(Panel):
         self.set_fontSize(fontSize)
         self.set_error(error)
         self.set_datasource(datasource)
+        for s in styles:
+            self.styles.append(s)
+        for l in links:
+            self.links.append(l)
+        for c in columns:
+            self.columns.append(c)
     def set_transform(self, t):
         debug_print("TablePanel: set_transform(%s)" % str(t))
-        if isinstance(t, str) and t in self.validTransform:
+        if (isinstance(t, str) or isinstance(t, unicode)) and t in self.validTransform:
             self.transform = t
             return True
         return False
     def set_fontSize(self, t):
         debug_print("TablePanel: set_fontSize(%s)" % str(t))
-        if isinstance(t, str) and t in self.validFontSizes:
+        if (isinstance(t, str) or isinstance(t, unicode)) and t in self.validFontSizes:
             self.fontSize = t
             return True
         return False
@@ -1311,11 +1327,15 @@ class PlotPanel(Panel):
                        editable=True, isNew=True, links=[], span=12,
                        description=None):
         Panel.__init__(self, span=span, editable=editable, title=title, description=description)
-        self.links = links
+        self.links = []
         self.isNew = isNew
         self.error = error
         self.datasource = datasource
-        self.targets = targets
+        self.targets = []
+        for l in links:
+            self.links.append(l)
+        for t in targets:
+            self.targets.append(t)
     def set_isNew(self, b):
         debug_print("PlotPanel: set_isNew(%s)" % str(b))
         if isinstance(b, bool):
@@ -1358,7 +1378,7 @@ class PlotPanel(Panel):
         p += "links=%s, span=%d)"  % (str(self.links), int(self.span), )
         return p
     def read_json(self, j):
-        if isinstance(j, str):
+        if isinstance(j, str) or isinstance(j, unicode):
             j = json.loads(j)
         if j.has_key("datasource"):
             self.set_datasource(j["datasource"])
@@ -1405,7 +1425,7 @@ class SeriesOverride(object):
             d.update({"fill" : self.fill})
         if self.linewidth and isinstance(self.linewidth, int) and self.linewidth in range(11):
             d.update({"linewidth" : self.linewidth})
-        if self.fillBelowTo and isinstance(self.linewidth, str):
+        if self.fillBelowTo and (isinstance(self.linewidth, str) or isinstance(self.linewidth, unicode)):
             d.update({"fillBelowTo" : self.fillBelowTo})
         if isinstance(self.steppedLine, bool):
             d.update({"steppedLine" : self.steppedLine})
@@ -1484,7 +1504,7 @@ class SeriesOverride(object):
             self.fill = None
     def set_fillBelowTo(self, b):
         debug_print("SeriesOverride: set_fillBelowTo(%s)" % str(b))
-        if isinstance(b, str):
+        if isinstance(b, str) or isinstance(b, unicode):
             self.alias = b
             self.fillBelowTo = b
             self.lines = False
@@ -1649,7 +1669,6 @@ class GraphPanel(PlotPanel):
                          description=description)
         self.type = "graph"
         self.bars = False
-        self.targets = []
         self.nullPointMode = "connected"
         self.renderer = "flot"
         self.linewidth = 2
@@ -1685,7 +1704,8 @@ class GraphPanel(PlotPanel):
         self.set_linewidth(linewidth)
         self.set_steppedLine(steppedLine)
         self.set_fill(fill)
-        self.seriesOverrides = seriesOverrides
+        for s in seriesOverrides:
+            self.seriesOverrides.append(s)
         self.set_percentage(percentage)
         self.set_xaxis(xaxis)
         self.grid = grid
@@ -1737,13 +1757,13 @@ class GraphPanel(PlotPanel):
         return False
     def set_timeFrom(self, timeFrom):
         debug_print("GraphPanel: set_timeFrom(%s)" % str(timeFrom))
-        if timeFrom == None or (isinstance(timeFrom, str) and timeFrom[-1] in time_limits.keys()):
+        if timeFrom == None or ((isinstance(timeFrom, str) or isinstance(timeFrom, unicode)) and timeFrom[-1] in time_limits.keys()):
             self.timeFrom = timeFrom
             return True
         return False
     def set_timeShift(self, timeShift):
         debug_print("GraphPanel: set_timeShift(%s)" % str(timeShift))
-        if timeShift == None or (isinstance(timeShift, str) and timeShift[-1] in time_limits.keys()):
+        if timeShift == None or ((isinstance(timeShift, str) or isinstance(timeShift, unicode)) and timeShift[-1] in time_limits.keys()):
             self.timeShift = timeShift
             return True
         return False
@@ -1837,7 +1857,7 @@ class GraphPanel(PlotPanel):
         if isinstance(b, int):
             self.pointradius = b
             return True
-        elif isinstance(b, str):
+        elif isinstance(b, str) or isinstance(b, unicode):
             try:
                 self.pointradius = int(b)
                 return True
@@ -2101,7 +2121,6 @@ class PiePanel(PlotPanel):
                          datasource=datasource, error=error, span=span, editable=editable,
                          description=description)
         self.type = "grafana-piechart-panel"
-        self.targets = []
         self.pieType = "pie"
         self.aliasColors = {}
         self.cacheTimeout = None
@@ -2199,7 +2218,7 @@ class PiePanel(PlotPanel):
         return False
     def set_valueName(self, valueName):
         debug_print("PiePanel: set_valueName(%s)" % str(valueName))
-        if isinstance(valueName, str):
+        if isinstance(valueName, str) or isinstance(valueName, unicode):
             self.valueName = valueName
             return True
         return False
@@ -2472,7 +2491,6 @@ class SingleStat(PlotPanel):
         self.cacheTimeout=None
         self.colorBackground=False
         self.colorValue=False
-        self.colors=[]
         self.format="none"
         self.gauge=Gauge()
         self.interval=None
@@ -2486,7 +2504,6 @@ class SingleStat(PlotPanel):
         self.sparkline=Sparkline()
         self.thresholds=""
         self.valueFontSize="80%"
-        self.valueMaps=[]
         self.valueName="avg"
         self.invertColors=False
         self.decimals=None
@@ -2507,9 +2524,6 @@ class SingleStat(PlotPanel):
         self.colors = []
         for c in colors:
             self.add_color(c)
-        self.targets = []
-        for t in targets:
-            self.add_target(t)
         self.set_format(format)
         self.set_gauge(gauge)
         self.set_interval(interval)
@@ -2538,27 +2552,27 @@ class SingleStat(PlotPanel):
                 self.add_rangeMap(v["start"], v["end"], v["text"] )
         self.set_valueName(valueName)
     def set_thresholds(self, t):
-        if isinstance(t, str):
+        if isinstance(t, str) or isinstance(t, unicode):
             self.thresholds = t
             return True
         return False
     def set_format(self, t):
-        if isinstance(t, str):
+        if isinstance(t, str) or isinstance(t, unicode):
             self.format = t
             return True
         return False
     def set_interval(self, t):
-        if not t or isinstance(t, str):
+        if not t or isinstance(t, str) or isinstance(t, unicode):
             self.interval = t
             return True
         return False
     def set_postfix(self, t):
-        if isinstance(t, str):
+        if isinstance(t, str) or isinstance(t, unicode):
             self.postfix = t
             return True
         return False
     def set_prefix(self, t):
-        if isinstance(t, str):
+        if isinstance(t, str) or isinstance(t, unicode):
             self.prefix = t
             return True
         return False
@@ -2573,27 +2587,27 @@ class SingleStat(PlotPanel):
             return True
         return False
     def set_nonePointMode(self, t):
-        if isinstance(t, str) and t in self.validNonePointModes:
+        if (isinstance(t, str) or isinstance(t, unicode)) and t in self.validNonePointModes:
             self.NonePointMode = t
             return True
         return False
     def set_noneText(self, t):
-        if not t or isinstance(t, str):
+        if not t or isinstance(t, str) or isinstance(t, unicode):
             self.NoneText = t
             return True
         return False
     def set_nullPointMode(self, t):
-        if isinstance(t, str) and t in self.validNonePointModes:
+        if (isinstance(t, str) or isinstance(t, unicode)) and t in self.validNonePointModes:
             self.nullPointMode = t
             return True
         return False
     def set_nullText(self, t):
-        if not t or isinstance(t, str):
+        if not t or isinstance(t, str) or isinstance(t, unicode):
             self.nullText = t
             return True
         return False
     def set_cacheTimeout(self, t):
-        if not t or isinstance(t, str):
+        if not t or isinstance(t, str) or isinstance(t, unicode):
             self.cacheTimeout = t
             return True
         return False
@@ -2846,7 +2860,7 @@ class Row(object):
         self.set_repeatRowId(repeatRowId)
         self.set_titleSize(titleSize)
     def set_title(self, t):
-        if not isinstance(t, str):
+        if not (isinstance(t, str) or isinstance(t, unicode)):
             try:
                 t = str(t)
             except ValueError:
@@ -2855,7 +2869,7 @@ class Row(object):
         self.title = t
         return True
     def set_height(self, height):
-        if not isinstance(height, str):
+        if not (isinstance(height, str) or isinstance(height, unicode)):
             try:
                 height = str(height)
             except ValueError:
@@ -2867,12 +2881,12 @@ class Row(object):
         self.height = height
         return True
     def set_repeat(self, repeat):
-        if repeat == None or isinstance(repeat, str):
+        if repeat == None or isinstance(repeat, str) or isinstance(repeat, unicode):
             self.repeat = repeat
             return True
         return False
     def set_repeatIteration(self, repeatIteration):
-        if repeatIteration == None or isinstance(repeatIteration, str):
+        if repeatIteration == None or isinstance(repeatIteration, str) or isinstance(repeatIteration, unicode):
             self.repeatIteration = repeatIteration
             return True
         return False
@@ -2882,7 +2896,7 @@ class Row(object):
             return True
         return False
     def set_titleSize(self, titleSize):
-        if isinstance(titleSize, str):
+        if isinstance(titleSize, str) or isinstance(titleSize, unicode):
             self.titleSize = titleSize
             return True
         return False
@@ -3024,13 +3038,13 @@ class Template(object):
         self.set_regex(regex)
         self.set_allValue(allValue)
     def _set_name_and_value(self, name, value):
-        if not isinstance(name, str):
+        if not (isinstance(name, str) or isinstance(name, unicode)):
             try:
                 name = str(name)
             except:
                 print "Name not stringifyable"
                 return False
-        if not isinstance(value, str):
+        if not isinstance(value, str) or isinstance(value, unicode):
             try:
                 value = str(value)
             except:
@@ -3045,12 +3059,12 @@ class Template(object):
             return True
         return False
     def set_tagsQuery(self, tagsQuery):
-        if isinstance(tagsQuery, str):
+        if isinstance(tagsQuery, str) or isinstance(tagsQuery, unicode):
             self.tagsQuery = tagsQuery
             return True
         return False
     def set_regex(self, regex):
-        if isinstance(regex, str):
+        if isinstance(regex, str) or isinstance(regex, unicode):
             self.regex = regex
             return True
         return False
@@ -3060,22 +3074,22 @@ class Template(object):
             return True
         return False
     def set_tagValuesQuery(self, tagValuesQuery):
-        if isinstance(tagValuesQuery, str):
+        if isinstance(tagValuesQuery, str) or isinstance(tagValuesQuery, unicode):
             self.tagValuesQuery = tagValuesQuery
             return True
         return False
     def set_label(self, label):
-        if label == None or isinstance(label, str):
+        if label == None or isinstance(label, str) or isinstance(label, unicode):
             self.label = label
             return True
         return False
     def set_allValue(self, allValue):
-        if allValue == None or isinstance(allValue, str):
+        if allValue == None or isinstance(allValue, str) or isinstance(allValue, unicode):
             self.allValue = allValue
             return True
         return False
     def set_datasource(self, datasource):
-        if isinstance(datasource, str):
+        if isinstance(datasource, str) or isinstance(datasource, unicode):
             self.datasource = datasource
             return True
         return False
@@ -3148,7 +3162,7 @@ class Template(object):
         if isinstance(option, list):
             self.options = copy.deepcopy(option)
             return True
-        elif isinstance(option, str):
+        elif isinstance(option, str) or isinstance(option, unicode):
             self.options.append(option)
             return True
         return False
@@ -3257,14 +3271,18 @@ class Template(object):
 class Timepicker(object):
     def __init__(self, time_options=['5m', '15m', '1h', '6h', '12h', '24h', '2d', '7d', '30d'],
                        refresh_intervals=['5s', '10s', '30s', '1m', '5m', '15m', '30m', '1h', '2h', '1d'], now=True):
-        self.time_options = time_options
-        self.refresh_intervals = refresh_intervals
-        self.now=True
+        self.time_options = []
+        for o in time_options:
+            self.time_options.append(o)
+        self.refresh_intervals = []
+        for o in refresh_intervals:
+            self.refresh_intervals.append(o)
+        self.now=now
     def set_time_options(self, t):
         if isinstance(t, list):
             self.time_options = copy.deepcopy(t)
             return True
-        elif isinstance(t, str):
+        elif isinstance(t, str) or isinstance(t, unicode):
             self.time_options.append(t)
             return True
         return False
@@ -3272,7 +3290,7 @@ class Timepicker(object):
         if isinstance(t, list):
             self.refresh_intervals = copy.deepcopy(t)
             return True
-        elif isinstance(t, str):
+        elif isinstance(t, str) or isinstance(t, unicode):
             self.refresh_intervals.append(t)
             return True
         return False
@@ -3342,7 +3360,7 @@ class Annotation(object):
             return True
         return False
     def set_iconColor(self, c):
-        if isinstance(c, str) and check_color(c):
+        if (isinstance(c, str) or isinstance(c, unicode)) and check_color(c):
             self.iconColor = c
             return True
         return False
@@ -3458,6 +3476,16 @@ class Dashboard(object):
             self.schemaVersion = 12
         elif grafana_version.startswith("4"):
             self.schemaVersion = 14
+        for r in rows:
+            self.add_row(r)
+        for l in links:
+            self.links.append(l)
+        for t in tags:
+            self.tags.append(l)
+        for t in templates:
+            self.templates.append(t)
+        for a in annotations:
+            self.annotations.append(a)
     def get_slug(self):
         return self.slug
     def add_template(self, t):
@@ -3483,7 +3511,7 @@ class Dashboard(object):
             return True
         return False
     def add_tag(self, t):
-        if not isinstance(t, str):
+        if not isinstance(t, str) or isinstance(t, unicode):
             try:
                 t = str(t)
             except ValueError:
@@ -3520,7 +3548,7 @@ class Dashboard(object):
             return True
         return False
     def set_title(self, t):
-        if not isinstance(t, str):
+        if not (isinstance(t, str) or isinstance(t, unicode)):
             try:
                 t = str(t)
             except ValueError:
@@ -3529,7 +3557,7 @@ class Dashboard(object):
         self.title = t
         return True
     def set_originalTitle(self, t):
-        if not isinstance(t, str):
+        if not (isinstance(t, str) or isinstance(t, unicode)):
             try:
                 t = str(t)
             except ValueError:
@@ -3538,7 +3566,7 @@ class Dashboard(object):
         self.originalTitle = t
         return True
     def set_description(self, t):
-        if not isinstance(t, str):
+        if not (isinstance(t, str) or isinstance(t, unicode)):
             try:
                 t = str(t)
             except ValueError:
@@ -3547,7 +3575,7 @@ class Dashboard(object):
         self.description = t
         return True
     def set_refresh(self, r):
-        if (isinstance(r, str) and r[-1] in time_limits.keys()) or r == False:
+        if ((isinstance(r, str) or isinstance(r, unicode)) and r[-1] in time_limits.keys()) or r == False:
             self.refresh = r
             return True
         return False
@@ -3570,7 +3598,7 @@ class Dashboard(object):
         self.schemaVersion = v
         return True
     def set_timezone(self, t):
-        if not isinstance(t, str):
+        if not (isinstance(t, str) or isinstance(t, unicode)):
             try:
                 t = str(t)
             except ValueError:
@@ -3588,13 +3616,13 @@ class Dashboard(object):
         return False
     def set_startTime(self, t):
         # check time
-        if isinstance(t, str):
+        if isinstance(t, str) or isinstance(t, unicode):
             self.startTime = t
         if isinstance(t, int) or isinstance(t, float) or isinstance(t, datetime.datetime):
             self.startTime = str(t)
     def set_endTime(self, t):
         # check time
-        if isinstance(t, str):
+        if isinstance(t, str) or isinstance(t, unicode):
             self.endTime = t
         if isinstance(t, int) or isinstance(t, float) or isinstance(t, datetime.datetime):
             self.endTime = str(t)
@@ -3648,7 +3676,9 @@ class Dashboard(object):
 
 def read_json(dstr):
     dash = None
-    if isinstance(dstr, str):
+    if isinstance(dstr, str) or isinstance(dstr, unicode):
+        if isinstance(dstr, unicode):
+            dstr = dstr.replace("u'","'").replace("\"", "\\\"").replace("'","\"").replace("True","true").replace("False","false").replace("None","null")
         try:
             dash = json.loads(dstr)
         except ValueError as e:
