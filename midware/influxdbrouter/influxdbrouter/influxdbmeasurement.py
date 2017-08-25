@@ -26,7 +26,7 @@ class Measurement(object):
         elif isinstance(mstr, str):
             self.mstr = mstr
             state = 1
-            instr = False
+            instr = ""
             hastags = False
 
             mstr = mstr.strip()
@@ -47,11 +47,17 @@ class Measurement(object):
                     break
             if start == 0:
                 print("String not in InfluxDB line protocol")
-            for i, c in enumerate(mstr[start:]):
-                if c == '\"' or c == '\'':
-                    instr = not instr
 
-                elif c == ' ' and not instr:
+            teststr = mstr[start:]
+            for i, c in enumerate(teststr):
+
+                if (c == '\"' or c == '\''):
+                    if len(instr) == 0:
+                        instr = c
+                    elif c == instr and (not teststr[i-1] in ("=", " ", "\\")) and teststr[i+1] in (",", " "):
+                        instr = ""
+
+                elif c == ' ' and len(instr) == 0:
                     idx = start+i
                     self.idxs[state][1] = idx
                     state += 1
@@ -59,6 +65,7 @@ class Measurement(object):
                     if state == 3:
                         break
             self.idxs[state][1] = len(mstr)
+
 
             if state == 1:
                 self.idxs[2][0] = self.idxs[1][0]
@@ -74,6 +81,7 @@ class Measurement(object):
                     self.idxs[2][0] = self.idxs[1][0]
                     self.idxs[2][1] = self.idxs[1][1]
                     self.idxs[1] = [-1,-1]
+
         self.fields = self._get_all_pairs(2)
         self.tags = self._get_all_pairs(1)
     def debug(self):
@@ -122,14 +130,22 @@ class Measurement(object):
         k = ""
         v = ""
         has_eq = False
-        instr = False
+        instr = ""
         if not self.mstr:
             return tags
-        for i in range(self.idxs[idx][0], self.idxs[idx][1]):
-            c = self.mstr[i]
+        teststr = self.mstr[self.idxs[idx][0] : self.idxs[idx][1]]
+
+        for i in range(len(teststr)):
+            c = teststr[i]
+
             if c == '\"' or c == '\'':
-                instr = not instr
-            elif c == '=':
+                if len(instr) == 0:
+                    instr = c
+                elif c == instr and (not teststr[i-1] in ("=", " ", "\\")) and teststr[i+1] in (",", " "):
+                    instr = ""
+            
+                #instr = not instr
+            elif c == '=' and len(instr) == 0:
                 has_eq = not has_eq
                 continue
             elif c == ',':
@@ -137,7 +153,7 @@ class Measurement(object):
                 k = ""
                 v = ""
                 has_eq = False
-                instr = False
+                instr = ""
                 continue
             if not has_eq: 
                 k += c
@@ -470,7 +486,6 @@ class MeasurementBatchByMeta(MeasurementBatchByAttr):
 class MeasurementBatchByTag(MeasurementBatchByAttr):
     def _get_attr(self, m):
         return m.get_tag(self.attrkey)
-
 
 
 #i = Measurement2("testmetric value=1.0")
