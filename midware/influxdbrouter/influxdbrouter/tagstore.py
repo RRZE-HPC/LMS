@@ -26,6 +26,7 @@ class Tagger(object):
         for h in hostlist:
             if h in self.tags_by_host:
                 logging.info("Host %s already registered for key %s. Overwrite exiting mapping" % (h, self.tags_by_host[h],))
+	    logging.info("Add Host %s with tags %s" % (h, str(tags),))
             self.tags_by_host[h] = tags
         self.lock.release()
         return True
@@ -41,6 +42,7 @@ class Tagger(object):
         self.lock.acquire()
         for h in hostlist:
             if h in self.tags_by_host:
+		logging.info("Delete Host %s with tags %s" % (h, str(self.tags_by_host[h]),))
                 del self.tags_by_host[h]
         self.lock.release()
         return True
