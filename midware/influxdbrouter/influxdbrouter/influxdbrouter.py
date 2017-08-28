@@ -279,14 +279,15 @@ class MeasurementStore(object):
                 if key not in self.active_keys:
                     self.active_keys.append(key)
             self.lock.release()
-        if self.buffer[key].full():
-            logging.info("Buffer for key '%s' full, trying to send some measurements" % (key,))
-            self.send(key)
-        if self.buffer[key].empty():
-            self.addtimes[key] = datetime.datetime.now()
-        self.buffer[key].put(m)
-        if self.buffer[key].qsize() > self.db_hosts[self.dbs[key]]["batch"]:
-            self.batch_ready.put(key)
+        if key in self.buffer:
+            if self.buffer[key].full():
+                logging.info("Buffer for key '%s' full, trying to send some measurements" % (key,))
+                self.send(key)
+            if self.buffer[key].empty():
+                self.addtimes[key] = datetime.datetime.now()
+            self.buffer[key].put(m)
+            if self.buffer[key].qsize() > self.db_hosts[self.dbs[key]]["batch"]:
+                self.batch_ready.put(key)
     def _send_influx(hostname, port, db, metrics, headers={}):
         url = "http://%s:%s/write?db=%s" % (hostname, str(port), db)
 
@@ -350,13 +351,14 @@ class MeasurementStore(object):
                     logging.error("Cannot send measurement to %s:\n%s" % (url,si))
                     pass
 
-        if self.buffer[key].empty():
-            self.lock.acquire()
-            logging.info("Closing Queue for key '%s'" % key)
-            del self.buffer[key]
-            del self.addtimes[key]
-            self.active_keys.remove(key)
-            self.lock.release()
+#        if key in self.buffer and self.buffer[key].empty():
+#            self.lock.acquire()
+#            logging.info("Closing Queue for key '%s'" % key)
+#            del self.buffer[key]
+#            if key in self.addtimes:
+#                del self.addtimes[key]
+#            self.active_keys.remove(key)
+#            self.lock.release()
     def send_all(self):
         logging.debug("Sending one batch to each active database")
         still_ready = []
@@ -530,6 +532,7 @@ class InfluxReceiveHandler(BaseHTTPRequestHandler):
                 # Create a measurement
                 m = Measurement(cline)
                 mname = m.get_metric()
+
                 # Should we skip this measurement?
                 if self.server.filter and not self.server.filter.match(mname):
                     continue
@@ -552,10 +555,10 @@ class InfluxReceiveHandler(BaseHTTPRequestHandler):
                     addstatus = self.server.sigconf["addstatus"]
                     delstatus = self.server.sigconf["delstatus"]
 
-                    if re.match(addstatus, m.get_attr(stag)):
+                    if addstatus == m.get_attr(stag).strip("\""):
                         if not self.server.tagger.add(m):
                             continue
-                    elif m.get_attr(stag) == delstatus:
+                    if delstatus == m.get_attr(stag).strip("\""):
                         if not self.server.tagger.delete(m):
                             continue
 
@@ -589,6 +592,13 @@ class InfluxReceiveHandler(BaseHTTPRequestHandler):
                         deltags.append(k)
                 for k in deltags:
                     m.del_tag(k)
+                fields = m.get_all_fields()
+                for k in fields:
+                    if len(str(fields[k])) == 0:
+                        if k == "value":
+                            m.fields[k] = '0'
+                        else:
+                            m.fields[k] = '""'
 
                 # Store it for admin database
                 self.server.store.add(m)
@@ -695,13 +705,9 @@ class InfluxReceiveHandler(BaseHTTPRequestHandler):
                 if m:
                     out = None
                     if m.group(1) == "keys":
-                        out = json.dumps(self.server.tagger.get_all_keys())
+                        out = json.dumps(self.server.tagger.get_all_tags())
                     if m.group(1) == "hosts":
                         out = json.dumps(self.server.tagger.get_all_active_hosts())
-                    if m.group(1) == "keydata":
-                        out = json.dumps(self.server.tagger.get_all_key_data())
-                    if m.group(1) == "dbhosts":
-                        out = json.dumps(self.server.store.get_db_hosts())
 
                     if out:
                         self.send_response(200)
