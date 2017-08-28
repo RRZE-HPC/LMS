@@ -25,65 +25,145 @@ class Measurement(object):
 
         elif isinstance(mstr, str):
             self.mstr = mstr
-            state = 1
-            instr = ""
-            hastags = False
-
-            mstr = mstr.strip()
+            instr = False
             start = 0
+            no_timestamp = False
             for i, c in enumerate(mstr):
-                if c == ' ':
-                    self.idxs[0][1] = i
+                if c == '\"' or c == '\'':
+                    instr = not instr
+                if c == ' ' and not instr:
                     self.metric = mstr[start:i]
                     start = i+1
-                    self.idxs[1][0] = start
                     break
-                elif c == ',':
-                    self.idxs[0][1] = i
+                elif c == ',' and not instr:
                     self.metric = mstr[start:i]
                     start = i+1
-                    self.idxs[1][0] = start
                     hastags = True
                     break
-            if start == 0:
-                print("String not in InfluxDB line protocol")
+            t = ""
+            for i,c in enumerate(mstr[::-1]):
+                if c == ' ':
+                    break
+                t = c+t
+            try:
+                self.timestamp = int(t.strip())
+            except:
+                no_timestamp = True
+                self.timestamp = None
+            end_tags = start
+            instr = False
+            for i, c in enumerate(mstr[start:]):
+                if c == '\"' or c == '\'':
+                    instr = not instr
 
-            teststr = mstr[start:]
-            for i, c in enumerate(teststr):
+                elif c == ' ' and not instr:
+                    end_tags = start+i
+                    break
+            instr = False
+            s = 0
+            e = 0
+            key = None
+            for i,c in enumerate(mstr[start:end_tags]):
+                if c == '\"' or c == '\'':
+                    instr = not instr
+                if c == "=" and not instr:
+                    k = mstr[start:end_tags][s:i]
+                    key = k
+                    s = i+1
+                if c == "," and not instr and key:
+                    self.tags[key] = mstr[start:end_tags][s:i]
+                    key = None
+                    s = i+1
+            if key and key not in self.tags:
+                self.tags[key] = mstr[start:end_tags][s:end_tags]
+            s = 0
+            e = 0
+            key = None
+            instr = False
+            while mstr[end_tags] == " ":
+                end_tags += 1
+            for i,c in enumerate(mstr[end_tags:]):
+                if c == '\"' or c == '\'':
+                    instr = not instr
+                if c == "=" and not instr:
+                    k = mstr[end_tags:][s:i]
+                    key = k
+                    s = i+1
+                if c == "," and not instr and key:
+                    self.fields[key] = mstr[end_tags:][s:i]
+                    key = None
+                    s = i+1
+            if key and key not in self.tags:
+                e = len(mstr[end_tags:])
+                instr = False
+                for i,c in enumerate(mstr[end_tags:][s:]):
+                    if c == '\"' or c == '\'':
+                        instr = not instr
+                    if c == " ":
+                        e = i
+                        break;
+                self.fields[key] = mstr[end_tags:][s:e]
+#            self.mstr = mstr
+#            state = 1
+#            instr = False
+#            hastags = False
 
-                if (c == '\"' or c == '\''):
-                    if len(instr) == 0:
-                        instr = c
-                    elif c == instr and (not teststr[i-1] in ("=", " ", "\\")) and teststr[i+1] in (",", " "):
-                        instr = ""
+#            mstr = mstr.strip()
+#            start = 0
+#            for i, c in enumerate(mstr):
+#                if c == '\"' or c == '\'':
+#                    instr = not instr
+#                if c == ' ' and not instr:
+#                    self.idxs[0][1] = i
+#                    self.metric = mstr[start:i]
+#                    start = i+1
+#                    self.idxs[1][0] = start
+#                    break
+#                elif c == ',' and not instr:
+#                    self.idxs[0][1] = i
+#                    self.metric = mstr[start:i]
+#                    start = i+1
+#                    self.idxs[1][0] = start
+#                    hastags = True
+#                    break
+#            if start == 0:
+#                print("String not in InfluxDB line protocol")
+#            instr = False
+#            for i, c in enumerate(mstr[start:]):
+#                if c == '\"' or c == '\'':
+#                    instr = not instr
 
-                elif c == ' ' and len(instr) == 0:
-                    idx = start+i
-                    self.idxs[state][1] = idx
-                    state += 1
-                    self.idxs[state][0] = idx+1
-                    if state == 3:
-                        break
-            self.idxs[state][1] = len(mstr)
+#                elif c == ' ' and not instr:
+#                    idx = start+i
+#                    self.idxs[state][1] = idx
+#                    state += 1
+#                    self.idxs[state][0] = idx+1
+#                    if state == 3:
+#                        break
+#            self.idxs[state][1] = len(mstr)
 
-
-            if state == 1:
-                self.idxs[2][0] = self.idxs[1][0]
-                self.idxs[2][1] = self.idxs[1][1]
-                self.idxs[1] = [-1,-1]
-                self.idxs[3] = [-1,-1]
-            elif state == 2:
-                if hastags:
-                    self.idxs[3] = [-1,-1]
-                else:
-                    self.idxs[3][0] = self.idxs[2][0]
-                    self.idxs[3][1] = self.idxs[2][1]
-                    self.idxs[2][0] = self.idxs[1][0]
-                    self.idxs[2][1] = self.idxs[1][1]
-                    self.idxs[1] = [-1,-1]
-
-        self.fields = self._get_all_pairs(2)
-        self.tags = self._get_all_pairs(1)
+#            if state == 1:
+#                self.idxs[2][0] = self.idxs[1][0]
+#                self.idxs[2][1] = self.idxs[1][1]
+#                self.idxs[1] = [-1,-1]
+#                self.idxs[3] = [-1,-1]
+#            elif state == 2:
+#                if hastags:
+#                    self.idxs[3] = [-1,-1]
+#                else:
+#                    self.idxs[3][0] = self.idxs[2][0]
+#                    self.idxs[3][1] = self.idxs[2][1]
+#                    self.idxs[2][0] = self.idxs[1][0]
+#                    self.idxs[2][1] = self.idxs[1][1]
+#                    self.idxs[1] = [-1,-1]
+#        if self.idxs[3][0] != -1:
+#            try:
+#                timestamp = int(self.mstr[self.idxs[3][0]:self.idxs[3][1]])
+#            except:
+#                self.idxs[2][1] = self.idxs[3][1]
+#                self.idxs[3] = [-1,-1]
+#        self.fields = self._get_all_pairs(2)
+#        self.tags = self._get_all_pairs(1)
     def debug(self):
             print(self.mstr)
             print(self.idxs)
@@ -130,22 +210,14 @@ class Measurement(object):
         k = ""
         v = ""
         has_eq = False
-        instr = ""
+        instr = False
         if not self.mstr:
             return tags
-        teststr = self.mstr[self.idxs[idx][0] : self.idxs[idx][1]]
-
-        for i in range(len(teststr)):
-            c = teststr[i]
-
+        for i in range(self.idxs[idx][0], self.idxs[idx][1]):
+            c = self.mstr[i]
             if c == '\"' or c == '\'':
-                if len(instr) == 0:
-                    instr = c
-                elif c == instr and (not teststr[i-1] in ("=", " ", "\\")) and teststr[i+1] in (",", " "):
-                    instr = ""
-            
-                #instr = not instr
-            elif c == '=' and len(instr) == 0:
+                instr = not instr
+            elif c == '=':
                 has_eq = not has_eq
                 continue
             elif c == ',':
@@ -153,7 +225,7 @@ class Measurement(object):
                 k = ""
                 v = ""
                 has_eq = False
-                instr = ""
+                instr = False
                 continue
             if not has_eq: 
                 k += c
@@ -198,37 +270,47 @@ class Measurement(object):
         if key in ("user", "host"):
             print("Bad keys for InfluxDB, used by itself as keywords")
             return False
-        if self.idxs[1][0] == -1:
-            repl = self.mstr[:self.idxs[0][1]]
-            add = ","+str(key)+"="+str(value)
-            add_len = len(add)
-            self.mstr = self.mstr.replace(repl, repl+add, 1)
-            self.idxs[1][0] = self.idxs[0][1] + 1
-            self.idxs[1][1] = self.idxs[0][1] + add_len
-            for i in range(2,4):
-                if self.idxs[i][0] >= 0:
-                    self.idxs[i][0] += add_len
-                    self.idxs[i][1] += add_len
+        if key in self.tags:
+            print("Tag with key %s already exists with value %s" % (key, self.tags[key]))
+        else:
             self.tags[key] = value
             return True
-        else:
-            #s, e = self._get_idxs_from_str(key, self.idxs[1])
-            if key not in self.tags:
-                repl = self.mstr[self.idxs[1][1]-5:self.idxs[1][1]]
-                add = ","+str(key)+"="+str(self._trycast(value))
-                add_len = len(add)
-                self.mstr = self.mstr.replace(repl, repl+add, 1)
-                self.idxs[1][1] += len(add)
-                for i in range(2,4):
-                    if self.idxs[i][0] >= 0:
-                        self.idxs[i][0] += add_len
-                        self.idxs[i][1] += add_len
-                self.tags[key] = value
-                return True
-            else:
-                print("Tag with key %s already exists with value %s" % (key, self.mstr[s:e]))
         return False
+#        if self.idxs[1][0] == -1:
+#            repl = self.mstr[:self.idxs[0][1]]
+#            add = ","+str(key)+"="+str(value)
+#            add_len = len(add)
+#            self.mstr = self.mstr.replace(repl, repl+add, 1)
+#            self.idxs[1][0] = self.idxs[0][1] + 1
+#            self.idxs[1][1] = self.idxs[0][1] + add_len
+#            for i in range(2,4):
+#                if self.idxs[i][0] >= 0:
+#                    self.idxs[i][0] += add_len
+#                    self.idxs[i][1] += add_len
+#            self.tags[key] = value
+#            return True
+#        else:
+#            #s, e = self._get_idxs_from_str(key, self.idxs[1])
+#            if key not in self.tags:
+#                repl = self.mstr[self.idxs[1][1]-5:self.idxs[1][1]]
+#                add = ","+str(key)+"="+str(self._trycast(value))
+#                add_len = len(add)
+#                self.mstr = self.mstr.replace(repl, repl+add, 1)
+#                self.idxs[1][1] += len(add)
+#                for i in range(2,4):
+#                    if self.idxs[i][0] >= 0:
+#                        self.idxs[i][0] += add_len
+#                        self.idxs[i][1] += add_len
+#                self.tags[key] = value
+#                return True
+#            else:
+#                print("Tag with key %s already exists with value %s" % (key, self.mstr[s:e]))
+#        return False
     def mod_tag(self, key, value):
+        if key in self.tags:
+            self.tags[key] = value
+        else:
+            self.tags[key] = value
         if self.idxs[1][0] != -1:
             if self.get_tag(key):
                 s, e = self._get_idxs_from_str(key, self.idxs[1])
@@ -269,84 +351,87 @@ class Measurement(object):
             repl_len += 1
         return repl_len
     def del_tag(self, key):
-        if self.idxs[1][0] != -1:
-            s, e = self._get_idxs_from_str(key, self.idxs[1])
-            if s != -1:
-                start = self.idxs[1][0]
-                for i in range(s, self.idxs[1][0], -1):
-                    c = self.mstr[i]
-                    if c == ',':
-                        start = i+1
-                        break
-                end = e
-                repl = self.mstr[start:end]
-                repl_len = len(repl)
-                self.mstr = self.mstr.replace(repl, "", 1)
-                repl_len += self._del_sanitize()
-                self.idxs[1][1] -= repl_len
-                for i in range(2,4):
-                    if self.idxs[i][0] >= 0:
-                        self.idxs[i][0] -= repl_len
-                        self.idxs[i][1] -= repl_len
-                del self.tags[key]
+        if key in self.tags:
+            del self.tags[key]
+#        if self.idxs[1][0] != -1:
+#            s, e = self._get_idxs_from_str(key, self.idxs[1])
+#            if s != -1:
+#                start = self.idxs[1][0]
+#                for i in range(s, self.idxs[1][0], -1):
+#                    c = self.mstr[i]
+#                    if c == ',':
+#                        start = i+1
+#                        break
+#                end = e
+#                repl = self.mstr[start:end]
+#                repl_len = len(repl)
+#                self.mstr = self.mstr.replace(repl, "", 1)
+#                repl_len += self._del_sanitize()
+#                self.idxs[1][1] -= repl_len
+#                for i in range(2,4):
+#                    if self.idxs[i][0] >= 0:
+#                        self.idxs[i][0] -= repl_len
+#                        self.idxs[i][1] -= repl_len
+#                del self.tags[key]
     def del_field(self, key):
-        if self.idxs[2][0] != -1:
-            s, e = self._get_idxs_from_str(key, self.idxs[2])
-            if s != -1:
-                start = self.idxs[2][0]
-                for i in range(s, self.idxs[2][0], -1):
-                    c = self.mstr[i]
-                    if c == ',':
-                        start = i+1
-                        break
-                end = e
-                repl = self.mstr[start:end]
-                repl_len = len(repl)
-                self.mstr = self.mstr.replace(repl, "", 1)
-                repl_len += self._del_sanitize()
-                self.idxs[2][1] -= repl_len
-                if self.idxs[3][0] >= 0:
-                    self.idxs[3][0] -= repl_len
-                    self.idxs[3][1] -= repl_len
-                del self.fields[key]
-                if self.idxs[2][0] == self.idxs[2][1]:
-                    print("Deleted last field. Current state is invalid, there must be at least one field entry")
+        if key in self.fields:
+            del self.fields[key]
+        
+#        if self.idxs[2][0] != -1:
+#            s, e = self._get_idxs_from_str(key, self.idxs[2])
+#            if s != -1:
+#                start = self.idxs[2][0]
+#                for i in range(s, self.idxs[2][0], -1):
+#                    c = self.mstr[i]
+#                    if c == ',':
+#                        start = i+1
+#                        break
+#                end = e
+#                repl = self.mstr[start:end]
+#                repl_len = len(repl)
+#                self.mstr = self.mstr.replace(repl, "", 1)
+#                repl_len += self._del_sanitize()
+#                self.idxs[2][1] -= repl_len
+#                if self.idxs[3][0] >= 0:
+#                    self.idxs[3][0] -= repl_len
+#                    self.idxs[3][1] -= repl_len
+#                del self.fields[key]
+#                if self.idxs[2][0] == self.idxs[2][1]:
+#                    print("Deleted last field. Current state is invalid, there must be at least one field entry")
     def add_field(self, key, value):
         #s, e = self._get_idxs_from_str(key, self.idxs[2])
         if key not in self.fields:
-            repl = self.mstr[self.idxs[2][1]-5:self.idxs[2][1]]
-            add = ","+str(key)+"="+str(self._trycast(value))
-            add_len = len(add)
-            self.mstr = self.mstr.replace(repl, repl+add, 1)
-            self.idxs[2][1] += len(add)
-            if self.idxs[3][0] >= 0:
-                self.idxs[3][0] += add_len
-                self.idxs[3][1] += add_len
+#            repl = self.mstr[self.idxs[2][1]-5:self.idxs[2][1]]
+#            add = ","+str(key)+"="+str(self._trycast(value))
+#            add_len = len(add)
+#            self.mstr = self.mstr.replace(repl, repl+add, 1)
+#            self.idxs[2][1] += len(add)
+#            if self.idxs[3][0] >= 0:
+#                self.idxs[3][0] += add_len
+#                self.idxs[3][1] += add_len
             self.fields[key] = value
             return True
         else:
             print("Field with key %s already exists with value %s" % (key, self.mstr[s:e]))
         return False
     def set_time(self, time):
-        if self.idxs[3][0] == -1:
-            repl = self.mstr[self.idxs[2][1]-5:self.idxs[2][1]]
-            add = " "+str(time)
-            self.mstr = self.mstr.replace(repl, repl+add, 1)
-            self.idxs[3][0] = self.idxs[2][1] + 1
-            self.idxs[3][1] = self.idxs[3][0] + len(str(time))
-        else:
-            repl = self.mstr[self.idxs[3][0]:self.idxs[3][1]]
-            self.mstr = self.mstr.replace(repl, str(time), 1)
-            if len(repl) != len(str(time)):
-                self.idxs[3][1] = self.idxs[3][0] + len(str(time)) + 1
-        self.timestamp = self.mstr[self.idxs[3][0]:self.idxs[3][1]]
+        self.timestamp = time
+#        if self.idxs[3][0] == -1:
+#            repl = self.mstr[self.idxs[2][1]-5:self.idxs[2][1]]
+#            add = " "+str(time)
+#            self.mstr = self.mstr.replace(repl, repl+add, 1)
+#            self.idxs[3][0] = self.idxs[2][1] + 1
+#            self.idxs[3][1] = self.idxs[3][0] + len(str(time))
+#        else:
+#            repl = self.mstr[self.idxs[3][0]:self.idxs[3][1]]
+#            self.mstr = self.mstr.replace(repl, str(time), 1)
+#            if len(repl) != len(str(time)):
+#                self.idxs[3][1] = self.idxs[3][0] + len(str(time)) + 1
+#        self.timestamp = self.mstr[self.idxs[3][0]:self.idxs[3][1]]
     def get_metric(self):
         return self.mstr[self.idxs[0][0]:self.idxs[0][1]]
     def get_time(self):
         if self.timestamp:
-            return self.timestamp
-        elif self.idxs[3][0] != -1:
-            self.timestamp = int(self.mstr[self.idxs[3][0]:self.idxs[3][1]])
             return self.timestamp
         return None
     def get_datetime(self):
@@ -369,7 +454,14 @@ class Measurement(object):
         else:
             print("Meta info with key %s does not exist" % key)
     def __str__(self):
-        return self.mstr
+        s = self.metric
+        if len(self.tags) > 0:
+            s += ","+",".join(["%s=%s" % (k,str(self.tags[k])) for k in self.tags])
+        if len(self.fields) > 0:
+            s += " "+",".join(["%s=%s" % (k,str(self.fields[k])) for k in self.fields])
+        if self.timestamp:
+            s += " "+str(self.timestamp)
+        return s
     def __repr__(self):
         return """Measurement(\"\"\"%s\"\"\")""" % (self.mstr)
     def get_attr(self, attr):
@@ -488,6 +580,7 @@ class MeasurementBatchByTag(MeasurementBatchByAttr):
         return m.get_tag(self.attrkey)
 
 
+
 #i = Measurement2("testmetric value=1.0")
 #i.debug()
 #i.add_tag("hostname", "heidi")
@@ -563,3 +656,4 @@ class MeasurementWindow(object):
             self.buffer[h].set_time(t)
             w.append(self.buffer[h])
         return w
+
