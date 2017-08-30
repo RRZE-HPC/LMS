@@ -547,7 +547,10 @@ class InfluxReceiveHandler(BaseHTTPRequestHandler):
 
                 key = None
                 # Measurements can have multiple functions, so we test all
-                if self.server.sigconf["do_signalling"] and mname == self.server.sigconf["signal_measurement"]:
+                sigm = self.server.sigconf["signal_measurement"]
+                infom = self.server.infoconf["info_measurement"]
+                if self.server.sigconf["do_signalling"] and mname == sigm:
+
                     # Only tags are attached to all following measurements
                     # Stuff in fields is only meant for the database (additional
                     # information)
@@ -557,12 +560,14 @@ class InfluxReceiveHandler(BaseHTTPRequestHandler):
 
                     if addstatus == m.get_attr(stag).strip("\""):
                         if not self.server.tagger.add(m):
+                            print("Failed to add tag for:\n%s" % str(m))
                             continue
                     if delstatus == m.get_attr(stag).strip("\""):
                         if not self.server.tagger.delete(m):
+                            print("Failed to delete tag for:\n%s" % str(m))
                             continue
 
-                elif self.server.infoconf["do_info"] and mname == self.server.infoconf["info_measurement"]:
+                elif self.server.infoconf["do_info"] and mname == infom:
                         # process info measurement (currently unused)
                         newdb = self.server.config.get("InfoConfig", "infodb_db")
                         if not newdb:
