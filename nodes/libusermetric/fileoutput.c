@@ -31,7 +31,7 @@ int fileoutput_submit_string(char* str)
         printf("Writing to file: %s\n", str);
     if (fp)
     {
-        fwrite(str, 1, strlen(str)+1, fp);
+        fwrite(str, 1, strlen(str), fp);
         fwrite("\n", 1, 1, fp);
     }
     else

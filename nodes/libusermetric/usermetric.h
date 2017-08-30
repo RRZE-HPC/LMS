@@ -15,6 +15,7 @@ typedef enum {
 
 extern int init_usermetric(UserMetricOutputType type, char* host, char* port, char* dest, int add_defaults) __attribute__ ((visibility ("default") ));
 extern int add_default_tag(char* key, char* val) __attribute__ ((visibility ("default") ));
+extern int add_default_field(char* key, char* val) __attribute__ ((visibility ("default") ));
 extern int supply_uservalue(char *key, char* field, float value, int ntags, char** tagkeys, char** tagvalues) __attribute__ ((visibility ("default") ));
 extern int supply_uservalues(char *key, int nfields, char** fields, float* values, int ntags, char** tagkeys, char** tagvalues) __attribute__ ((visibility ("default") ));
 extern int supply_userevent(char *key, char* field, char* string, int ntags, char** tagkeys, char** tagvalues) __attribute__ ((visibility ("default") ));

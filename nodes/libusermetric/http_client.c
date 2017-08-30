@@ -63,7 +63,7 @@ int http_client_connect()
     }
     int sock_timeout = 10000;
     int set = 1;
-    
+
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) error("ERROR opening socket");
     /* fill in the structure */
@@ -102,8 +102,8 @@ http_client_get(char* path, char* query, size_t nheads, char** headers, char** d
         message_size += strlen(query)+1;                     /* query string + '?'  */
     for(i=0; i < nheads; i++)                                    /* headers        */
         message_size += strlen(headers[i]) + strlen("\r\n");
-    message_size += strlen("\r\n");  
-    
+    message_size += strlen("\r\n");
+
     if (libusermetric_debug)
         printf("Allocating...\n");
     /* allocate space for the message */
@@ -172,7 +172,7 @@ http_client_get(char* path, char* query, size_t nheads, char** headers, char** d
         if (bytes == 0)
             break;
         received += bytes;
-        
+
         if (outdata == NULL)
         {
             if (libusermetric_debug)
@@ -185,7 +185,7 @@ http_client_get(char* path, char* query, size_t nheads, char** headers, char** d
                 resp_size = 0;
                 break;
             }
-            
+
         }
         else
         {
@@ -249,11 +249,11 @@ http_client_post(char* path, char* query, char* data, size_t nheads, char** head
     message_size+=strlen("\r\n");                          //blank line
     if(data)
         message_size += strlen(data);                     //body
-    
+
     //printf("Allocating...\n");
     //allocate space for the message
     message = malloc(message_size + 10);
-    
+
     sprintf(message,"POST %s%s%s HTTP/1.1\r\nHost: %s\r\n",
         spath,                                        //path
         (query && strlen(query) > 0 ? "?" : ""),      // '?'
@@ -270,7 +270,7 @@ http_client_post(char* path, char* query, char* data, size_t nheads, char** head
     if(data && strlen(data) > 0)
         strcat(message, data);
     //printf("Request:\n%s\n",message);
-    
+
     if (libusermetric_debug)
         printf("Send:\n----------------\n%s\n----------------\n\n", message);
     total = strlen(message);
@@ -315,7 +315,7 @@ send_retry:
     free(message);
 
     /* receive the response */
-/*recv_retry:
+recv_retry:
     memset(response, 0, sizeof(response));
     //total = sizeof(response)-1;
     total = 0;
@@ -323,16 +323,18 @@ send_retry:
     outdata = NULL;
     do
     {
-        
+
         received = recv(sockfd, response, sizeof(response)-1, MSG_DONTWAIT);
         if (received < 0)
         {
             if (errno == EAGAIN)
+            {
                 if (retry_count > 0)
                 {
                     retry_count--;
                     goto recv_retry;
                 }
+            }
             else
             {
                 printf("RECV ERROR %d : %s\n", errno, strerror(errno));
@@ -359,7 +361,7 @@ send_retry:
         }
         //if (received < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
             //received == 0;
-    } while (received > 0);*/
+    } while (received > 0);
 
     /*do {
         memset(response, 0, sizeof(response));
