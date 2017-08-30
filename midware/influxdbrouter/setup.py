@@ -9,7 +9,7 @@ setup(name='influxdbrouter',
       author='Thomas Roehl',
       author_email='Thomas.Roehl@fau.de',
       packages=["influxdbrouter"],
-      scripts=["scripts/startjob.py", "scripts/endjob.py"],
+      scripts=["scripts/lms-startjob", "scripts/lms-endjob"],
       data_files=[("etc" , ["./influxdbrouter.conf"])],
       entry_points={
         'console_scripts': [
