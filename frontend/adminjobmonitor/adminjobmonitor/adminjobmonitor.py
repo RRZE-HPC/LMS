@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os, sys, os.path, re, hashlib, signal
+import os, sys, os.path, re, hashlib, signal, urllib2
 from optparse import OptionParser
 from string import Template, capwords
 from influxdbrouter import JobMonitor, Measurement
@@ -11,6 +11,9 @@ from ConfigParser import SafeConfigParser
 from pygrafana.api import Connection
 import pygrafana.dashboard as pydash
 
+from SocketServer import ThreadingMixIn
+from SocketServer import TCPServer
+from SimpleHTTPServer import SimpleHTTPRequestHandler
 
 def get_cast(v):
     if isinstance(v, bool) or str(v).lower() in ("true", "false"):
@@ -22,10 +25,7 @@ def get_cast(v):
     return id
 
 def name_to_slug(name):
-    return name.replace(".","-").replace(" ","-").lower()
-
-
-
+    return name.replace(".","-").replace(" ","-").replace("(","").replace(")","").lower()
 
 
 def get_influx_values(data):
@@ -55,8 +55,39 @@ def create_url(indict, add=""):
              "Content-Type" : "application/octet-stream"}
     return url, heads
 
+class AdminJobHTTPServer(ThreadingMixIn, TCPServer, object):
+    def __init__(self, path, server_address, RequestHandlerClass):
+        self.timeout = 1
+        self.path = path
+        request_queue_size = 100
 
+        super(AdminJobHTTPServer, self).__init__(server_address, RequestHandlerClass)
 
+class AdminJobHandler(SimpleHTTPRequestHandler):
+    def __init__(self, request, client_address, server):
+        self.timeout = 1
+        SimpleHTTPRequestHandler.__init__(self, request, client_address, server)
+    def log_message(self,fmt, *args):
+        pass
+
+class AdminJobServer(threading.Thread):
+    def __init__(self, path, server_address):
+        self.path = os.path.abspath(path)
+        self.server_address = server_address
+        self.server = None
+        self.terminate = False
+        os.chdir(self.path)
+        threading.Thread.__init__(self)
+    def term(self):
+        self.terminate = True
+        req = urllib2.Request("http://%s:%d" % self.server_address)
+        resp = urllib2.urlopen(req)
+        resp.close()
+    def run(self):
+        if not self.server:
+            self.server = AdminJobHTTPServer(self.path, self.server_address, AdminJobHandler)
+        while not self.terminate:
+            self.server.handle_request()
 
 
 class AdminJobMonitor(JobMonitor):
@@ -86,6 +117,7 @@ class AdminJobMonitor(JobMonitor):
         self.gcon = None
         self.jobstore = {}
         self.panels_for_pix = []
+        self.pixserver = None
         JobMonitor.__init__(self, configfile=configfile)
     def read_grafana_config(self, configfile=None):
         if self.config and self.config.has_section("Grafana"):
@@ -115,7 +147,10 @@ class AdminJobMonitor(JobMonitor):
         self.read_grafana_config(configfile=configfile)
         self.read_admin_config(configfile=configfile)
         self.read_db_config(configfile=configfile)
-
+        if not self.pixserver:
+            self.open_http_server()
+        if not self.gcon:
+            self.open_grafana_con()
     def open_grafana_con(self):
         if not self.gcon:
             logging.info("Opening connection to Grafana %s:%s User %s" % (self.grafanaconf["hostname"],
@@ -155,7 +190,7 @@ class AdminJobMonitor(JobMonitor):
             self.adminconf["oid"] = oid
             logging.debug("Getting picture dashboard '%s' Slug %s" % (self.adminconf["pix_dashboard"], name_to_slug(self.adminconf["pix_dashboard"])))
             jobdashboard = self.gcon.get_dashboard(name_to_slug(self.adminconf["pix_dashboard"]), oid=self.adminconf["oid"])
-            
+
             if len(jobdashboard) > 0:
                 logging.debug("Getting panel identifiers from picture dashboard")
                 for ppart in self.adminconf["panels"]:
@@ -165,36 +200,47 @@ class AdminJobMonitor(JobMonitor):
                                 logging.debug("Adding panel identifier %d: %s" % (p["id"], p["title"]))
                                 self.panels_for_pix.append((p["id"], p["title"]))
             logging.info("Opened connection to Grafana")
+    def open_http_server(self):
+        m = re.match("http://(.+):(\d+)[/]*", self.adminconf["pix_url"])
+        if m and not self.pixserver:
+            host, port = m.groups()
+            logging.info("Publishing pix folder %s at %s" % (self.adminconf["pix_path"],self.adminconf["pix_url"]))
+            self.pixserver = AdminJobServer(self.adminconf["pix_path"], (host, int(port)))
+            self.pixserver.start()
     def add_admin_job(self, newjob):
         jobid = newjob.get_attr("tags.jobid")
         logging.info("Adding new job %s" % jobid)
+        logging.debug("Get admin dashboard '%s' Slug %s" % (self.adminconf["dashboard"], name_to_slug(self.adminconf["dashboard"])))
         try:
-            logging.debug("Get admin dashboard '%s' Slug %s" % (adminconf["dashboard"], name_to_slug(adminconf["dashboard"])))
-            d = self.gcon.get_dashboard(name_to_slug(self.adminconf["dashboard"]), oid=self.adminconf["oid"])
-            d = pydash.read_json(d)
-        except:
+            slug = name_to_slug(self.adminconf["dashboard"])
+            d = self.gcon.get_dashboard(slug, oid=int(self.adminconf["oid"]))
+        except Exception as e:
             logging.debug("Failed to get admin dashboard, creating a new one")
+            logging.debug(e)
             d = pydash.Dashboard(title=self.adminconf["dashboard"])
+            d.set_refresh ("1m")
             pass
-
-        logging.debug("Create TextPanel for job")
+        if not isinstance(d, pydash.Dashboard):
+            d = pydash.read_json(d)
+        t = newjob.get_time()
+        if not t:
+            newjob.set_time(int(time.time()*1E9))
         panel = self.create_adm_job_panel(newjob)
-        
-        logging.debug("Get last ID")
-        i = 1
-        for r in d.rows:
-            print("\""+str(r)+"\"")
-            for p in r.panels:
-                i = p["id"]+1
-                break
-        
-        panel.set_id(i)
+
+
         logging.debug("Create row with title %s" % jobid)
         row = pydash.Row(title=jobid)
         row.add_panel(panel)
-        logging.debug("Adding the row at the beginning")
-        d.rows = [row] + d.rows
+
+        newrows = [row]
+        for r in d.rows:
+            newrows.append(r)
+        d.rows = []
+        for r in newrows:
+            d.add_row(r)
+
         d.set_overwrite(True)
+        d.set_refresh ("1m")
         if len(self.adminconf["dumpfile"]) > 0:
             logging.debug("Dumping dashboard to file %s" % self.adminconf["dumpfile"])
             f = open("admindash.json", "w")
@@ -202,18 +248,19 @@ class AdminJobMonitor(JobMonitor):
             f.close()
         logging.info("Adding dashboard to Grafana")
         try:
-            ret = self.gcon.add_dashboard(d)
+            ret = self.gcon.add_dashboard(d, org=int(self.adminconf["oid"]))
+            logging.debug("Added successfully")
         except:
             logging.error("Cannot upload updated dashboard")
         self.jobstore[jobid] = newjob
     def measurement_to_text(self,m):
         s = ""
+        tags = m.get_all_tags()
+        for t in tags:
+            s += "<b>%s</b>: %s<br>" % (capwords(t), str(tags[t]).strip("\""))
         fields = m.get_all_fields()
         for t in fields:
-            s += "%s: %s<br>" % (capwords(t), str(fields[t]).strip("\""))
-        tags = m.get_all_fields()
-        for t in tags:
-            s += "%s: %s<br>" % (capwords(t), str(tags[t]).strip("\""))
+            s += "<b>%s</b>: %s<br>" % (capwords(t), str(fields[t]).strip("\""))
         return s
     def create_pix(self, jobid, panelId, path, starttime=None, endtime=None):
         if not starttime:
@@ -224,7 +271,7 @@ class AdminJobMonitor(JobMonitor):
         if not os.path.exists(os.path.dirname(os.path.abspath(path))):
             logging.debug("Creating picture directory %s" % os.path.dirname(os.path.abspath(path)))
             os.makedirs(os.path.dirname(path))
-        pic = self.gcon.get_pic(name_to_slug(self.adminconf["pix_dashboard"]), panelId, starttime, endtime, add=add, theme=self.adminconf["pix_theme"])
+        pic = self.gcon.get_pic(name_to_slug(self.adminconf["pix_dashboard"]), panelId, starttime, endtime, add=add, theme=self.adminconf["pix_theme"], height=900)
         if pic:
             f = open(path, "w")
             f.write(pic)
@@ -246,10 +293,12 @@ class AdminJobMonitor(JobMonitor):
         sub.update({"hash" : jobhash})
         pixfolder = os.path.join(self.adminconf["pix_path"], jobhash)
         logging.debug("Creating pics in %s" % pixfolder)
-        defpixurl = self.adminconf["pix_url"]+"/"+str(h.hexdigest())
+        defpixurl = self.adminconf["pix_url"]+"/"+self.adminconf["pix_path"]+"/"+str(h.hexdigest())
         defpixurl = defpixurl.replace("//","/").replace("http:/","http://")
         logging.debug("Offering pics at %s" % defpixurl)
-        linkurl = "http://%s:%s/dashboard/db/%s?var-%s=%s" % (self.grafanaconf["hostname"], str(self.grafanaconf["port"]), name_to_slug(self.adminconf["pix_dashboard"]), self.adminconf["pix_jobtag"], jobid)
+        starttime = int(m.get_time()/1E6)
+        endtime = int(time.time()*1E3)
+        linkurl = "http://%s:%s/dashboard/db/%s?var-%s=%s&from=%s&to=now" % (self.grafanaconf["hostname"], str(self.grafanaconf["port"]), name_to_slug(self.adminconf["pix_dashboard"]), self.adminconf["pix_jobtag"], jobid, starttime)
         logging.debug("Link url to job dashboard: %s" % linkurl)
         sub.update({"linkurl" : linkurl})
 
@@ -258,7 +307,7 @@ class AdminJobMonitor(JobMonitor):
         <div id=\"$hash\" class=\"ng-scope\">
         <script type=\"text/javascript\">
         $(document).ready(function() {
-            angular.element('#%s').injector().get('$rootScope').$on('refresh', function() {
+            angular.element('#tab-$hash').injector().get('$rootScope').$on('refresh', function() {
                 $funcs
             });
         });
@@ -288,11 +337,8 @@ class AdminJobMonitor(JobMonitor):
         funcs = []
         tablines = []
         for pid,ptitle in self.panels_for_pix:
-            
             pixpath = os.path.join(pixfolder, "%d.png" % pid)
             logging.debug("Creating pic at %s" % pixpath)
-            endtime = int(time.time()*1E3)
-            starttime = int(m.get_time()/1E6)
             self.create_pix(jobid, pid, pixpath, starttime=starttime, endtime=endtime)
             sub.update({"panel": pid, "picurl" : defpixurl+"/%d.png" % pid, "ptitle" : ptitle})
 
@@ -300,7 +346,7 @@ class AdminJobMonitor(JobMonitor):
             funcs.append(t_func.safe_substitute(sub))
 
         sub = {"hash" : jobhash, "header": self.measurement_to_text(m),
-               "func" : "\n".join(funcs), "elements" : "\n".join(tablines)}
+               "funcs" : "\n".join(funcs), "elements" : "\n".join(tablines)}
         panel = pydash.TextPanel(title=jobid)
         panel.set_mode("html")
         content = t_funcs.safe_substitute(sub)+"\n\n"+t_table.safe_substitute(sub)
@@ -312,14 +358,17 @@ class AdminJobMonitor(JobMonitor):
         if not jobid:
             logging.error("Given measurent has no jobid")
             return
-        logging.info("Remove %s from admin_view" % jobid)
+        logging.info("Remove %s from %s" % (jobid, self.adminconf["dashboard"]))
 
         try:
-            d = self.gcon.get_dashboard(name_to_slug(self.adminconf["dashboard"]), oid=self.adminconf["oid"])
-            d = pydash.read_json(d)
-        except:
+            slug = name_to_slug(self.adminconf["dashboard"])
+            d = self.gcon.get_dashboard(slug, oid=self.adminconf["oid"])
+
+        except Exception as e:
             logging.error("Cannot download admin dashboard %s" % self.adminconf["dashboard"])
+            logging.error(e)
             return
+        d = pydash.read_json(d)
         idx = -1
         for i,r in enumerate(d.rows):
             if r.title == jobid:
@@ -336,6 +385,7 @@ class AdminJobMonitor(JobMonitor):
             logging.error("Cannot find job %s in dashboard" % jobid)
             return
         d.set_overwrite(True)
+        d.set_refresh("1m")
         try:
             self.gcon.add_dashboard(d)
         except:
@@ -349,7 +399,8 @@ class AdminJobMonitor(JobMonitor):
         if os.path.exists(pixfolder):
             logging.debug("Delete pic folder %s" % pixfolder)
             os.system("rm -rf %s" % pixfolder)
-        del self.jobstore[jobid]
+        if jobid in self.jobstore:
+            del self.jobstore[jobid]
     def update_admin_pix(self):
         """
         Update all pictures for all active jobs
@@ -359,8 +410,6 @@ class AdminJobMonitor(JobMonitor):
         self.update_t = threading.Thread(target=update_all_pix_thread, args=(self.gcon, self.jobstore, self.adminconf, self.panels_for_pix))
         self.update_t.start()
     def start(self, m):
-        if not self.gcon:
-            self.open_grafana_con()
         self.add_admin_job(m)
     def stop(self, m):
         self.del_admin_job(m)
@@ -374,44 +423,57 @@ def update_all_pix_thread(gcon, jobstore, config, panels):
     the pictures takes some time and will block the receive loop.
     """
     endtime = int(time.time()*1E3)
-    for jobid in jobstore:
-        logging.debug("Thread: Updating pics for job %s" % jobid)
-        m = jobstore[jobid]
-        hstr = ""
-        for elem in config["pix_hash"]:
-            hstr += m.get_attr(elem)
-        h = hashlib.sha224(hstr)
-        jobhash = hashlib.sha224(jobid).hexdigest()
-        pixfolder = os.path.join(config["pix_path"], str(h.hexdigest()))
-        starttime = int(m.get_time()/1E6)
-        for pid, ptitle in panels:
-            pixpath = os.path.join(pixfolder, "%d.png" % pid)
-            
-            add = {config["pix_jobtag"] : jobid}
-            if not os.path.exists(os.path.dirname(os.path.abspath(config["pix_path"]))):
-                logging.debug("Creating picture directory %s" % os.path.dirname(os.path.abspath(config["pix_path"])))
-                os.makedirs(os.path.dirname(config["pix_path"]))
-            pic = gcon.get_pic(name_to_slug(config["pix_dashboard"]), pid, starttime, endtime, add=add, theme=config["pix_theme"])
-            if pic:
-                f = open(pixpath, "w")
-                f.write(pic)
-                f.close()
-            else:
-                logging.error("Got no picture from grafana from dashboard %s panel %d" % (name_to_slug(config["pix_dashboard"]), panelId))
+    jobids = jobstore.keys()
+    for jobid in jobids:
+        if jobid in jobstore:
+            logging.debug("Thread: Updating pics for job %s" % jobid)
+            m = jobstore[jobid]
+            hstr = ""
+            for elem in config["pix_hash"]:
+                hstr += m.get_attr(elem)
+            h = hashlib.sha224(hstr)
+            jobhash = hashlib.sha224(jobid).hexdigest()
+            pixfolder = os.path.join(config["pix_path"], str(h.hexdigest()))
+            starttime = int(m.get_time()/1E6)
+            for pid, ptitle in panels:
+                pixpath = os.path.join(pixfolder, "%d.png" % pid)
+                
+                add = {config["pix_jobtag"] : jobid}
+                if not os.path.exists(os.path.dirname(os.path.abspath(config["pix_path"]))):
+                    logging.debug("Creating picture directory %s" % os.path.dirname(os.path.abspath(config["pix_path"])))
+                    os.makedirs(os.path.dirname(config["pix_path"]))
+                pic = gcon.get_pic(name_to_slug(config["pix_dashboard"]), pid, starttime, endtime, add=add, theme=config["pix_theme"],height=900)
+                if pic:
+                    try:
+                        f = open(pixpath, "w")
+                        f.write(pic)
+                        f.close()
+                    except:
+                        pass
+                else:
+                    logging.error("Got no picture from grafana from dashboard %s panel %d" % (name_to_slug(config["pix_dashboard"]), panelId))
 
 def main():
     parser = OptionParser()
     parser.add_option("-c", "--config", dest="configfile", help="Configuration file", default=sys.argv[0]+".conf", metavar="FILE")
+    parser.add_option("-l", "--log", dest="logfile", help="Log file", default="AdminJobMonitor.log", metavar="FILE")
     (options, args) = parser.parse_args()
     if not os.path.exists(options.configfile):
         print("Cannot read configuration file %s" % options.configfile)
         sys.exit(1)
+    FORMAT = '%(asctime)s %(message)s'
+    logging.basicConfig(filename=options.logfile, level=logging.DEBUG, format=FORMAT)
     mymon = AdminJobMonitor(configfile=options.configfile)
     mymon.read_config()
     try:
         mymon.recv_loop()
     except KeyboardInterrupt:
-        pass
+        if mymon.update_t:
+            mymon.update_t.join(0.5)
+        if mymon.pixserver:
+            mymon.pixserver.term()
+
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
