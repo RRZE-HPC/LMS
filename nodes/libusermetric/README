@@ -1,0 +1,72 @@
+###############################################################################
+#               libusermetric
+###############################################################################
+
+# What is it?
+The libusermetric is a small C/C++-library that can be integrated in applications
+to send metrics or events into the LMS.
+
+# Installation
+The installation follows the common make way:
+
+(edit installation prefix in config.mk)
+$ make
+$ make install
+
+# Usage in applications
+In order to integrate the library in applications, some basic steps need to
+be done:
+
+Initialize the library
+int init_usermetric(outputtype, hostname, port, path, add_defaults)
+    - outputtype is one of:
+        - INFLUXDB_OUT: Send data in InfluxDB line protocol to a server
+        - FILE_OUT: Write measurements to a file
+    - hostname is the destination host
+    - port is the port at the destination host
+    - path has different meanings, depending on the outputtype:
+        - INFLUXDB_OUT: database name
+        - FILE_OUT: destination file name
+    - add_defaults is a flag that indicates whether some default attributes
+      should be added to each measurement. Default attibutes are:
+        - hostname: Hostname of the system
+        - username: Username invoking libusermetric
+
+Add more default tags (added to each measurement)
+int add_default_tag(key, value)
+    - key: name of the tag
+    - value: value associated with the name
+
+Close library
+void close_usermetric()
+
+Supplying metrics:
+int supply_uservalues(key, nfields, fields, values, ntags, tagkeys, tagvalues)
+    - key: Measurement name
+    - nfields: Amount of entries in fields and values arrays
+    - fields: Keys for the values in values
+    - values: Values to the keys in fields
+    - ntags: Amount of additional tags in tagkeys and tagvalues arrays
+    - tagkeys: Keys for the tags
+    - tagvalues: Values for the corresponding keys in tagkeys
+
+Supplying events:
+int supply_userevents(key, nfields, fields, strings, ntags, tagkeys, tagvalues)
+    - key: Measurement name
+    - nfields: Amount of entries in fields and values arrays
+    - fields: Keys for the values in values
+    - strings: The strings corresponding to the keys in fields
+    - ntags: Amount of additional tags in tagkeys and tagvalues arrays
+    - tagkeys: Keys for the tags
+    - tagvalues: Values for the corresponding keys in tagkeys
+
+# Examples
+An example how to use libusermetrics can be found in the folder scripts with the
+supply_usermetric code. It is a command line interface to the libusermetric and
+enables to send data from the commandline, e.g. before starting an executable.
+
+# Bugs/Feedback
+Thomas Roehl email: Thomas.Roehl@fau.de
+or open issues at
+https://github.com/RRZE-HPC/LMS
+
