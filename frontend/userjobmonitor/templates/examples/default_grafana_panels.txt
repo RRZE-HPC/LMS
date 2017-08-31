@@ -1,0 +1,73 @@
+###############################################################################
+How to create a template of a Grafana panel
+###############################################################################
+
+For default Grafana panels, it is pretty easy. Create it in Grafana by using
+the editing mode. With this way you can see what you get based on some default
+values. You can add thresholds, axis labels and whatever Grafana gives you as
+configuration options.
+When you are done, click on the panel title and further on 'Panel JSON' (might
+be in a submenu). Copy & paste the JSON to a file and place it in the template
+folder.
+
+###############################################################################
+How to use a predefined Grafana dashboard
+###############################################################################
+Just place the dashboard JSON in the template folder. Keep in mind that it
+overwrites the configuration you have created before that, so if you want a
+predefined dashboard but add other rows/panels/script results to it, name the
+dashboard that it is the first in the sorted list of files.
+
+###############################################################################
+How to call a script and use the information
+###############################################################################
+In some cases it is required to call a script to get further information that
+should be presented. One case is for example to read more stuff from a database
+or to do analysis of the whole run (example is the eval_db.py script).
+For that create a template file and put inside:
+{
+    "exec" : "path to script with arguments",
+}
+You probably need information from the measurement as inputs for your script.
+There are some special strings that are replaced with acutal values before
+calling the script:
+<DBHOST> : Hostname of the database host
+<DBPORT> : Port number of the database
+<DBUSER> : Username for the database
+<DBNAME> : Name of the database
+<GUSER> : Grafana user
+<GORG> : Grafana organization
+<GSRC> : Grafana datasource
+<DASHNAME> : Title of the Grafana dashboard
+And all tags and fields in the incomming measurement where tag and field keys
+look like this <KEY> (in angle brackets and in upper case).
+
+The script should return a valid Grafana panel JSON. You can use pygrafana to
+create this JSON.
+
+###############################################################################
+How to create a template of a Grafana row
+###############################################################################
+Like with Grafana panels, create the row in Grafana with the default editing
+mode. Unfortunately, there is no 'Row JSON' functionality, so you have to get
+the JSON of the whole dashboard (gearwheel in top menu and 'View JSON') and
+copy & paste out the row JSON. Place it in a file in the template folder.
+
+###############################################################################
+How are the templates evaluated
+###############################################################################
+The list of JSON files in the template folder is sorted and then added to the
+dashboard. It is therefore recommended to name them 1.json, 2.json, ...
+
+###############################################################################
+Which template folder is used
+###############################################################################
+In the UserJobMonitor.conf file are options 'templates' and 'def_templates'.
+Set them to the path to the template directory. The path can contain the common
+measurement attribute strings that are replaced by acutal values. This allows
+to select the templates based on the incomming measurement. Good attributes for
+template selection are for example (but of course depends what you send at a 
+job start):
+[fields.cluster] : Name of the cluster the job is running on
+[fields.march] : The march (= micro architecture) consist of the CPU family and
+                 model and thus allows to specify hardware type templates

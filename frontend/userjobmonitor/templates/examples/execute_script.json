@@ -1,0 +1,3 @@
+{
+    "exec" : "./example-script.py --url http://<DBHOST>:<DBPORT --db <DBNAME> --id <DASHNAME>"
+}
