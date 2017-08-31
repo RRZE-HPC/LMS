@@ -298,7 +298,7 @@ class UserJobMonitor(JobMonitor):
         if len(ds) == 0:
             logging.debug("Datasource %s does not exist" % gds)
             if self.userconf["create_user_ds"]:
-                self.userconf["user_dbs"][host]
+                
                 udb = resolve_str(self.userconf["user_dbs"][host]["dbname"], m)
                 url, heads = create_url(self.userconf["user_dbs"][host])
                 gdsid = self.gcon.add_ds(gds, typ="influxdb", url=url, database=udb, orgId=oid)
@@ -341,6 +341,20 @@ class UserJobMonitor(JobMonitor):
                         a = pydash.Annotation("", "")
                         a.read_json(inp)
                         annotations.append(a)
+            exec_replace = {"<DBHOST>" : self.userconf["user_dbs"][udbhost]["hostname"],
+                            "<DBPORT>" : self.userconf["user_dbs"][udbhost]["port"],
+                            "<DBUSER>" : self.userconf["user_dbs"][udbhost]["username"],
+                            "<DBNAME" : self.userconf["user_dbs"][udbhost]["dbname"],
+                            "<GUSER>" : guser,
+                            "<GORG>" : gorg,
+                            "<GSRC>" : gds,
+                            "<DASHNAME>" : dashname}
+            alltags = m.get_all_tags()
+            for k,v in alltags.items():
+                exec_replace.update({"<%s>" % k.upper() : str(v)})
+            allfields = m.get_all_fields()
+            for k,v in allfields.items():
+                exec_replace.update({"<%s>" % k.upper() : str(v)})
             files = sorted(glob.glob(tfolder+"/*.json"))
             for f in files:
                 if re.match(".+/(\d+).json$", f):
@@ -353,7 +367,8 @@ class UserJobMonitor(JobMonitor):
                         e[0] = os.path.abspath(e[0])
                         if os.path.exists(e[0]):
                             for i, elem in enumerate(e):
-                                e[i] = elem.replace("$DB", database).replace("$NAME",name).replace("$SRC", datasource)
+                                for k in exec_replace:
+                                    e[i] = elem.replace(k, exec_replace[k])
                             p = subprocess.Popen(" ".join(e), shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,close_fds=True)
                             out, err = p.communicate()
                             if p.returncode != 0:
