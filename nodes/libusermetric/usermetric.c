@@ -6,6 +6,7 @@
 #include <errno.h> /* errnos */
 #include <pthread.h>
 #include <signal.h>
+#include <sys/time.h>
 
 #include <usermetric.h>
 #include <influxdb.h>
@@ -30,7 +31,8 @@ static int (*submit_string)(char* str) = NULL;
 
 char** deftags = NULL;
 int ndeftags = 0;
-
+char** deffields = NULL;
+int ndeffields = 0;
 
 void * qbuffer[QUEUESIZE];
 queue_t Queue = QUEUE_INITIALIZER(qbuffer);
@@ -38,9 +40,15 @@ queue_t Queue = QUEUE_INITIALIZER(qbuffer);
 pthread_t send_thread;
 int send_thread_stop = 0;
 
+int max_send = 50;
+int send_size = 200;
+
 static unsigned long get_timestamp()
 {
-    return (unsigned long)time(NULL)*1E9;
+    struct timeval tp;
+    gettimeofday(&tp, NULL);
+    long long mslong = (long long) tp.tv_sec * 1000000L + tp.tv_usec;
+    return (unsigned long)mslong*1E3;
 }
 
 void debug_usermetric(int val)
@@ -54,31 +62,67 @@ void threadhandler(int signum)
     send_thread_stop = 1;
 }
 
-void *send_thread_func(void *threadid)
+void *send_thread_func(void *void_sleeptime)
 {
     //signal(SIGABRT, threadhandler);
+    int sleeptime = *((int*)void_sleeptime);
     int ret = 0;
+    int cur_size = 0;
+    int cur_idx = 0;
+    char * sendbuffer = (char*) malloc(max_send*send_size*sizeof(char));
+    if (!sendbuffer)
+    {
+        printf("Cannot allocate send buffer of size %lu\n", max_send*send_size*sizeof(char));
+    }
     while (send_thread_stop == 0)
     {
-        while (queue_size(&Queue) > 0 && send_thread_stop == 0)
+        cur_size = queue_size(&Queue);
+        cur_idx = 0;
+        sendbuffer[cur_idx] = '\0';
+        if (cur_size > 0)
         {
-            char* str = (char*)queue_dequeue(&Queue);
-            if (submit_string != NULL)
+            printf("Sending %d metrics\n", cur_size);
+            while (cur_size > 0 && send_thread_stop == 0)
             {
-                ret = submit_string(str);
-                if (ret < 0)
+                
+                char* str = (char*)queue_dequeue(&Queue);
+                if (submit_string != NULL)
                 {
-                    queue_enqueue(&Queue, str);
+                    if (cur_idx + strlen(str) > max_send*send_size*sizeof(char))
+                    {
+                        queue_enqueue(&Queue, str);
+                        break;
+                    }
+                    else
+                    {
+                        strcat(sendbuffer, str);
+                        strcat(sendbuffer,"\n");
+                        cur_idx += strlen(str)+1;
+                    }
+                    cur_size--;
                 }
             }
+            sendbuffer[cur_idx] = '\0';
+            ret = submit_string(sendbuffer);
+            if (ret < 0)
+            {
+                printf("Send failed\n");
+            }
+        }
+        if (cur_size == 0 && send_thread_stop != 0)
+        {
+            fprintf(stderr, "Sleep %d seconds\n", sleeptime);
+            sleep(sleeptime);
         }
     }
-    printf("Thread exits loop\n");
-    while (queue_size(&Queue) > 0)
+    printf("Thread exits loop, submit remaining metrics\n");
+    cur_size = queue_size(&Queue);
+    while (cur_size > 0)
     {
         char* str = (char*)queue_dequeue(&Queue);
         if (submit_string != NULL)
             submit_string(str);
+        cur_size--;
     }
     pthread_exit(NULL);
 }
@@ -109,11 +153,29 @@ int add_default_tag(char* key, char* val)
     return 0;
 }
 
+int add_default_field(char* key, char* val)
+{
+    int ret = 0;
+    char** tmp = realloc(deffields, (ndeffields+1)*sizeof(char*));
+    if (!tmp)
+        return -ENOMEM;
+    else
+        deffields = tmp;
+    deffields[ndeffields] = malloc(strlen(key)+strlen(val)+4);
+    if (!deffields)
+        return -ENOMEM;
+    ret = sprintf(deffields[ndeffields], "%s=%s", key, val);
+    deffields[ndeffields][ret] = '\0';
+    ndeffields++;
+    return 0;
+}
+
 
 int
 init_usermetric(UserMetricOutputType type, char* host, char* port, char* dest, int add_defaults)
 {
     int err = 0;
+    int sleeptime = 5;
     switch(type)
     {
         case FILE_OUT:
@@ -132,18 +194,18 @@ init_usermetric(UserMetricOutputType type, char* host, char* port, char* dest, i
         char tmp[100];
         gethostname(tmp, 100);
         add_default_tag("hostname", tmp);
-        add_default_tag("username", getenv("USER"));
+        //add_default_tag("username", getenv("USER"));
         /*if (getjobid())
         {
             add_default_tag("jobid", getjobid());
         }*/
     }
-    pthread_create(&send_thread, NULL, send_thread_func, NULL);
+    pthread_create(&send_thread, NULL, send_thread_func, (void*)&sleeptime);
     return err;
 }
 
 
- 
+
 
 
 
@@ -162,7 +224,7 @@ init_usermetric(UserMetricOutputType type, char* host, char* port, char* dest, i
         add_tags = usereventtag;
     else
         return -EINVAL;
-    
+
     for (i=0;i<inntags;i++)
     {
         if (strcmp(intagkeys[i], "hostname") == 0 ||
@@ -316,7 +378,7 @@ init_usermetric(UserMetricOutputType type, char* host, char* port, char* dest, i
         printf("Value %d : %s\n", index, vals[index]);
     }
     index++;
-    
+
 
     // get job id if any
     if (getjobid() != NULL)
@@ -396,7 +458,7 @@ calc_length(char *key, int nfields, char** fields, int ntags, char** tagkeys, ch
     }
     for (i = 0; i <ndeftags; i++)
     {
-        len += strlen(deftags[i]) + 1; // for ',', '=' already inside 
+        len += strlen(deftags[i]) + 1; // for ',', '=' already inside
     }
     len += 50; // for safety and spaces between tags, fields and timestamp
     return len;
