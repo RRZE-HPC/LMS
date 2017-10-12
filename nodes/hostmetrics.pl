@@ -723,7 +723,9 @@ sub getlikwid {
             }
         }
     }
-    $res{'likwid_avgcpi'} = $cpi_sum / $cpi_count;
+    if ($cpi_count > 0) {
+        $res{'likwid_avgcpi'} = $cpi_sum / $cpi_count;
+    }
     #start-temporary-cpi-workaround
     #if ( defined($res{'raw_likwid_instructions_retired'}) && defined ($res{'raw_likwid_clk_unhalted'}) && $res{'raw_likwid_instructions_retired'} > 0.0 ) {
     #      $res{'likwid_avgcpi'} = $res{'raw_likwid_clk_unhalted'} / $res{'raw_likwid_instructions_retired'};
