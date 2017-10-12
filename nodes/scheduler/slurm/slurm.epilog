@@ -5,7 +5,7 @@
 if [ -e /usr/local/bin/endjob.py ]; then
     NODEFILE=/tmp/hostlist.$$
     scontrol show hostname ${SLURM_NODELIST} > ${NODEFILE}
-    /usr/local/bin/endjob.py -M ${NODEFILE} -j ${SLURM_JOB_ID}
+    /usr/local/bin/lms-endjob -M ${NODEFILE} -j ${SLURM_JOB_ID}
     rm ${NODEFILE}
 fi
 

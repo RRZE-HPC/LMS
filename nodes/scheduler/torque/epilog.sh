@@ -4,7 +4,7 @@
 # The nodefile (-M) and the Job identifiers are the minimum.
 # Further information can be supplied with -f
 if [ -e /usr/local/bin/endjob.py ]; then
-    /usr/local/bin/endjob.py -M ${PBS_NODEFILE} -j ${PBS_JOBID}
+    /usr/local/bin/lms-endjob -M ${PBS_NODEFILE} -j ${PBS_JOBID}
 fi
 
 # return permission to hpcop for gangliametrics.pl to do

@@ -21,7 +21,7 @@ if [ -e /usr/local/bin/startjob.py ]; then
     WALLTIME_S=(($(echo $WALLTIME | cut -d':' -f1) * 3600))
     WALLTIME_S=(($WALLTIME_S + ($(echo $WALLTIME | cut -d':' -f2) * 60)))
     WALLTIME_S=(($WALLTIME_S + $(echo $WALLTIME | cut -d':' -f3)))
-    /usr/local/bin/startjob.py -M ${NODEFILE} -j ${SLURM_JOB_ID} -f walltime=${WALLTIME_S} -f jobname=${SLURM_JOB_NAME} -f cluster=${SLURM_CLUSTER_NAME} -f queue=${SLURM_JOB_PARTITION} -f march=${CPU_FAMILY}_${CPU_MODEL} -f cpuname="${CPU_MODELNAME}"
+    /usr/local/bin/lms-startjob -M ${NODEFILE} -j ${SLURM_JOB_ID} -f walltime=${WALLTIME_S} -f jobname=${SLURM_JOB_NAME} -f cluster=${SLURM_CLUSTER_NAME} -f queue=${SLURM_JOB_PARTITION} -f march=${CPU_FAMILY}_${CPU_MODEL} -f cpuname="${CPU_MODELNAME}"
     rm ${NODEFILE}
 fi
 

@@ -19,7 +19,7 @@ if [ -e /usr/local/bin/startjob.py ]; then
     # You can add additonal fields with -f to startjob.
     # For tags you can use -t but be aware that tags will be added to each
     # measurement of the job
-    /usr/local/bin/startjob.py -M ${PBS_NODEFILE} -j ${PBS_JOBID} -f walltime=${PBS_WALLTIME} -f jobname=${PBS_JOBNAME} -f queue=${PBS_QUEUE} -f march=${CPU_FAMILY}_${CPU_MODEL} -f cpuname="${CPU_MODELNAME}"
+    /usr/local/bin/lms-startjob -M ${PBS_NODEFILE} -j ${PBS_JOBID} -f walltime=${PBS_WALLTIME} -f jobname=${PBS_JOBNAME} -f queue=${PBS_QUEUE} -f march=${CPU_FAMILY}_${CPU_MODEL} -f cpuname="${CPU_MODELNAME}" 
 fi
 
 
@@ -41,5 +41,5 @@ fi
 
 # Print the link to the job's dashboard
 GRAFANA_URL=http://testhost.testdomain.de:3000/
-GRAFANA_SLUG=$(echo ${PBS_JOBID//./-} | awk '{print tolower($0)}')
+GRAFANA_SLUG=$(echo ${${PBS_JOBID//./-}// /-} | awk '{print tolower($0)}')
 echo "Job monitoring: see at ${GRAFANA_URL}/dashboard/db/${GRAFANA_SLUG}"
