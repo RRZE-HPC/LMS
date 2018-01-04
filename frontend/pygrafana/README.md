@@ -1,6 +1,8 @@
 # pygrafana
 [Grafana](http://grafana.org/) dashboard builder and HTTP API interface for Python
 
+NOTE: There is also another repository on GitHub called pygrafana [Link](https://github.com/sec4you/pygrafana). This project has nothing to do with the pygrafana offered here.
+
 # Motivation
 I wanted to script Grafana dashboards based on entries in the time-series database. Long time I changed the JSON documents directly but with increasing complexity this was not feasible anymore. The current version wraps almost anything in classes that can be put together to a dashboard.
 
