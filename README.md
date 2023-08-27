@@ -2,6 +2,7 @@
 
 # LIKWID Monitoring Stack
 
+NOTE: This repository is deprecated. If you are searching for a cluster-wide job-specific monitoring solution, check [ClusterCockpit](https://github.com/ClusterCockpit).
 
 ## What is it?
 The LIKWID Monitoring Stack (LMS) is a set of tools and scripts to employ
